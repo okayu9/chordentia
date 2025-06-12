@@ -33,7 +33,7 @@ function validateBuild() {
     
     const requiredElements = [
       '<style>', // Inlined CSS
-      '<script type="module">', // Inlined JS
+      '<script>', // Inlined JS (with or without type="module")
       'Chordentia', // Title
       'chord-input', // Main input
       'note-button' // Note buttons

@@ -11,7 +11,7 @@ async function createProdHtml() {
     // Read minified assets
     const distPath = path.join(__dirname, '..', 'dist');
     const cssContent = fs.readFileSync(path.join(distPath, 'styles.min.css'), 'utf8');
-    const jsContent = fs.readFileSync(path.join(distPath, 'app.min.js'), 'utf8');
+    const jsContent = fs.readFileSync(path.join(distPath, 'bundle.min.js'), 'utf8');
 
     // Inline CSS
     html = html.replace(
@@ -22,7 +22,7 @@ async function createProdHtml() {
     // Inline JavaScript
     html = html.replace(
       '<script type="module" src="dist/app.js"></script>',
-      `<script type="module">${jsContent}</script>`
+      `<script>${jsContent}</script>`
     );
 
     // Minify the HTML with inlined assets
