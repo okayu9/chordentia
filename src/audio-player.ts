@@ -17,33 +17,38 @@ function init(): AudioContext {
 
 function playNote(frequency: number, duration: number = 1, startTime: number = 0): OscillatorNode {
   const ctx = init();
-  
+
   const oscillator = ctx.createOscillator();
   const envelope = ctx.createGain();
-  
+
   oscillator.connect(envelope);
   envelope.connect(masterGain!);
-  
+
   oscillator.type = currentTimbre;
   oscillator.frequency.value = frequency;
-  
+
   const now = ctx.currentTime + startTime;
   envelope.gain.value = 0;
   envelope.gain.linearRampToValueAtTime(0.3, now + 0.05);
   envelope.gain.exponentialRampToValueAtTime(0.01, now + duration);
-  
+
   oscillator.start(now);
   oscillator.stop(now + duration);
-  
+
   return oscillator;
 }
 
-function playChord(notes: Note[], octave: number = 4, duration: number = 2, bassNote?: Note): OscillatorNode[] {
+function playChord(
+  notes: Note[],
+  octave: number = 4,
+  duration: number = 2,
+  bassNote?: Note
+): OscillatorNode[] {
   const oscillators: OscillatorNode[] = [];
-  
+
   notes.forEach((note, index) => {
     // ベース音（最初の音）は1オクターブ下げる
-    const noteOctave = (bassNote && index === 0 && note === bassNote) ? octave - 1 : octave;
+    const noteOctave = bassNote && index === 0 && note === bassNote ? octave - 1 : octave;
     const midiNote = MusicTheory.getMidiNote(note, noteOctave);
     if (midiNote !== null) {
       const frequency = MusicTheory.getFrequency(midiNote);
@@ -52,13 +57,18 @@ function playChord(notes: Note[], octave: number = 4, duration: number = 2, bass
       oscillators.push(osc);
     }
   });
-  
+
   return oscillators;
 }
 
-function playArpeggio(notes: Note[], octave: number = 4, noteLength: number = 0.3, gap: number = 0.1): OscillatorNode[] {
+function playArpeggio(
+  notes: Note[],
+  octave: number = 4,
+  noteLength: number = 0.3,
+  gap: number = 0.1
+): OscillatorNode[] {
   const oscillators: OscillatorNode[] = [];
-  
+
   notes.forEach((note, index) => {
     const midiNote = MusicTheory.getMidiNote(note, octave);
     if (midiNote !== null) {
@@ -68,7 +78,7 @@ function playArpeggio(notes: Note[], octave: number = 4, noteLength: number = 0.
       oscillators.push(osc);
     }
   });
-  
+
   return oscillators;
 }
 
@@ -109,5 +119,5 @@ export const AudioPlayer: AudioPlayerInterface = {
   suspend,
   resume,
   setTimbre,
-  getTimbre
+  getTimbre,
 };

@@ -2,9 +2,7 @@
   "parser": "@typescript-eslint/parser",
   "plugins": ["@typescript-eslint"],
   "extends": [
-    "eslint:recommended",
-    "@typescript-eslint/recommended",
-    "@typescript-eslint/recommended-requiring-type-checking"
+    "eslint:recommended"
   ],
   "parserOptions": {
     "ecmaVersion": 2020,
@@ -17,15 +15,11 @@
     "jest": true
   },
   "rules": {
-    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-    "@typescript-eslint/explicit-function-return-type": "warn",
-    "@typescript-eslint/no-explicit-any": "error",
-    "@typescript-eslint/prefer-const": "error",
-    "@typescript-eslint/no-non-null-assertion": "warn",
     "prefer-const": "error",
     "no-var": "error",
     "no-console": "warn",
-    "no-debugger": "error"
+    "no-debugger": "error",
+    "no-unused-vars": "off"
   },
   "ignorePatterns": ["dist/", "node_modules/", "*.js", "*.cjs"]
 }

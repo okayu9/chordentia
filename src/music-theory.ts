@@ -1,87 +1,123 @@
-import type { 
-  Note, 
-  ChordQuality, 
-  Chord, 
-  ParsedChord, 
-  ChordSuggestion, 
+import type {
+  Note,
+  ChordQuality,
+  Chord,
+  ParsedChord,
+  ChordSuggestion,
   ChordSuggestionResult,
-  MusicTheoryInterface 
+  MusicTheoryInterface,
 } from './types.js';
 
-const notes: readonly Note[] = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
-const flatNotes: readonly Note[] = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'] as const;
+const notes: readonly Note[] = [
+  'C',
+  'C#',
+  'D',
+  'D#',
+  'E',
+  'F',
+  'F#',
+  'G',
+  'G#',
+  'A',
+  'A#',
+  'B',
+] as const;
+const flatNotes: readonly Note[] = [
+  'C',
+  'Db',
+  'D',
+  'Eb',
+  'E',
+  'F',
+  'Gb',
+  'G',
+  'Ab',
+  'A',
+  'Bb',
+  'B',
+] as const;
 
 const enharmonicEquivalents: Record<string, string> = {
   'C#': 'Db',
   'D#': 'Eb',
   'F#': 'Gb',
   'G#': 'Ab',
-  'A#': 'Bb'
+  'A#': 'Bb',
 } as const;
 
 const reverseEnharmonic: Record<string, string> = {
-  'Db': 'C#',
-  'Eb': 'D#',
-  'Gb': 'F#',
-  'Ab': 'G#',
-  'Bb': 'A#'
+  Db: 'C#',
+  Eb: 'D#',
+  Gb: 'F#',
+  Ab: 'G#',
+  Bb: 'A#',
 } as const;
 
 const noteToMidi: Record<string, number> = {
-  'C': 60, 'C#': 61, 'Db': 61,
-  'D': 62, 'D#': 63, 'Eb': 63,
-  'E': 64,
-  'F': 65, 'F#': 66, 'Gb': 66,
-  'G': 67, 'G#': 68, 'Ab': 68,
-  'A': 69, 'A#': 70, 'Bb': 70,
-  'B': 71
+  C: 60,
+  'C#': 61,
+  Db: 61,
+  D: 62,
+  'D#': 63,
+  Eb: 63,
+  E: 64,
+  F: 65,
+  'F#': 66,
+  Gb: 66,
+  G: 67,
+  'G#': 68,
+  Ab: 68,
+  A: 69,
+  'A#': 70,
+  Bb: 70,
+  B: 71,
 } as const;
 
 const chordFormulas: Record<ChordQuality, readonly number[]> = {
-  '': [0, 4, 7],  // メジャーコード（デフォルト）
-  'maj': [0, 4, 7],  // parseChord関数での処理用に残す
-  'm': [0, 3, 7],
-  'min': [0, 3, 7],
+  '': [0, 4, 7], // メジャーコード（デフォルト）
+  maj: [0, 4, 7], // parseChord関数での処理用に残す
+  m: [0, 3, 7],
+  min: [0, 3, 7],
   '7': [0, 4, 7, 10],
-  'maj7': [0, 4, 7, 11],
-  'm7': [0, 3, 7, 10],
-  'min7': [0, 3, 7, 10],
-  'dim': [0, 3, 6],
-  'dim7': [0, 3, 6, 9],
-  'm7b5': [0, 3, 6, 10],  // 半減7度コード
-  'aug': [0, 4, 8],
-  'sus2': [0, 2, 7],
-  'sus4': [0, 5, 7],
+  maj7: [0, 4, 7, 11],
+  m7: [0, 3, 7, 10],
+  min7: [0, 3, 7, 10],
+  dim: [0, 3, 6],
+  dim7: [0, 3, 6, 9],
+  m7b5: [0, 3, 6, 10], // 半減7度コード
+  aug: [0, 4, 8],
+  sus2: [0, 2, 7],
+  sus4: [0, 5, 7],
   '6': [0, 4, 7, 9],
-  'm6': [0, 3, 7, 9],
+  m6: [0, 3, 7, 9],
   '9': [0, 4, 7, 10, 14],
-  'maj9': [0, 4, 7, 11, 14],
-  'm9': [0, 3, 7, 10, 14],
-  'add9': [0, 4, 7, 14],
-  'add11': [0, 4, 7, 17],
-  'add#11': [0, 4, 7, 8],  // C, E, G, G# (シャープ11度は8半音)
-  'add13': [0, 4, 7, 21],
+  maj9: [0, 4, 7, 11, 14],
+  m9: [0, 3, 7, 10, 14],
+  add9: [0, 4, 7, 14],
+  add11: [0, 4, 7, 17],
+  'add#11': [0, 4, 7, 8], // C, E, G, G# (シャープ11度は8半音)
+  add13: [0, 4, 7, 21],
   'add#13': [0, 4, 7, 22],
-  '+5': [0, 4, 8],  // augmentedと同じ（入力用のみ）
+  '+5': [0, 4, 8], // augmentedと同じ（入力用のみ）
   'maj7+5': [0, 4, 8, 11],
   '7+5': [0, 4, 8, 10],
-  'm11': [0, 3, 7, 10, 14, 17],
+  m11: [0, 3, 7, 10, 14, 17],
   '13': [0, 4, 7, 10, 14, 21],
-  'm13': [0, 3, 7, 10, 14, 21],
+  m13: [0, 3, 7, 10, 14, 21],
   // 省略系コード
-  'omit5': [0, 4],  // 5度省略メジャー
-  'm(omit5)': [0, 3],  // 5度省略マイナー
-  '7omit5': [0, 4, 10],  // 5度省略セブンス
-  'maj7omit5': [0, 4, 11],  // 5度省略メジャーセブンス
-  'm7omit5': [0, 3, 10],  // 5度省略マイナーセブンス
-  'omit3': [0, 7],  // 3度省略（パワーコード）
-  '5': [0, 7],  // パワーコード
-  '7omit3': [0, 7, 10],  // 3度省略セブンス
-  'sus2omit5': [0, 2],  // 5度省略sus2
-  'sus4omit5': [0, 5],  // 5度省略sus4
-  '7sus4omit5': [0, 5, 10],  // 5度省略7sus4
-  '9omit5': [0, 4, 10, 14],  // 5度省略9th
-  'm9omit5': [0, 3, 10, 14]  // 5度省略m9
+  omit5: [0, 4], // 5度省略メジャー
+  'm(omit5)': [0, 3], // 5度省略マイナー
+  '7omit5': [0, 4, 10], // 5度省略セブンス
+  maj7omit5: [0, 4, 11], // 5度省略メジャーセブンス
+  m7omit5: [0, 3, 10], // 5度省略マイナーセブンス
+  omit3: [0, 7], // 3度省略（パワーコード）
+  '5': [0, 7], // パワーコード
+  '7omit3': [0, 7, 10], // 3度省略セブンス
+  sus2omit5: [0, 2], // 5度省略sus2
+  sus4omit5: [0, 5], // 5度省略sus4
+  '7sus4omit5': [0, 5, 10], // 5度省略7sus4
+  '9omit5': [0, 4, 10, 14], // 5度省略9th
+  m9omit5: [0, 3, 10, 14], // 5度省略m9
 } as const;
 
 function parseChord(chordString: string): ParsedChord {
@@ -94,7 +130,8 @@ function parseChord(chordString: string): ParsedChord {
   const slashIndex = chordString.indexOf('/');
   if (slashIndex !== -1) {
     const bassNoteString = chordString.substring(slashIndex + 1).trim();
-    bassNote = (bassNoteString.charAt(0).toUpperCase() + bassNoteString.slice(1).toLowerCase()) as Note;
+    bassNote = (bassNoteString.charAt(0).toUpperCase() +
+      bassNoteString.slice(1).toLowerCase()) as Note;
     chordString = chordString.substring(0, slashIndex).trim();
   }
 
@@ -116,69 +153,69 @@ function parseChord(chordString: string): ParsedChord {
   const qualityNormalization: Record<string, ChordQuality> = {
     // オーギュメント系
     '+5': 'aug',
-    'augmented': 'aug',
+    augmented: 'aug',
     '+': 'aug',
     '#5': 'aug',
     // マイナー系
-    'min': 'm',
-    'minor': 'm',
-    'mi': 'm',
+    min: 'm',
+    minor: 'm',
+    mi: 'm',
     '-': 'm',
     // マイナーセブンス系
-    'min7': 'm7',
-    'minor7': 'm7',
-    'mi7': 'm7',
+    min7: 'm7',
+    minor7: 'm7',
+    mi7: 'm7',
     '-7': 'm7',
     // メジャーセブンス系
-    'M7': 'maj7',
-    'major7': 'maj7',
-    'Maj7': 'maj7',
-    'MA7': 'maj7',
-    'Ma7': 'maj7',
+    M7: 'maj7',
+    major7: 'maj7',
+    Maj7: 'maj7',
+    MA7: 'maj7',
+    Ma7: 'maj7',
     '△7': 'maj7',
-    'j7': 'maj7',
+    j7: 'maj7',
     // ディミニッシュ系
-    'diminished': 'dim',
-    'o': 'dim',
+    diminished: 'dim',
+    o: 'dim',
     '°': 'dim',
-    'dim7': 'dim7',
-    'diminished7': 'dim7',
-    'o7': 'dim7',
+    dim7: 'dim7',
+    diminished7: 'dim7',
+    o7: 'dim7',
     '°7': 'dim7',
     // 半減7度系
     'half-dim': 'm7b5',
-    'ø': 'm7b5',
+    ø: 'm7b5',
     'm7♭5': 'm7b5',
     'm7-5': 'm7b5',
-    'ø7': 'm7b5',
+    ø7: 'm7b5',
     // サスペンデッド系
-    'sus': 'sus4',
-    'suspended4': 'sus4',
-    'suspended2': 'sus2',
+    sus: 'sus4',
+    suspended4: 'sus4',
+    suspended2: 'sus2',
     // ドミナント系
-    'dom7': '7',
-    'dominant7': '7',
+    dom7: '7',
+    dominant7: '7',
     // シックス系
-    'sixth': '6',
-    'add6': '6',
+    sixth: '6',
+    add6: '6',
     // ナインス系
-    'ninth': '9',
-    'add2': 'add9'
+    ninth: '9',
+    add2: 'add9',
   };
 
   if (qualityNormalization[quality]) {
     quality = qualityNormalization[quality]!;
   }
 
-  const result: ParsedChord = { 
-    root: root as Note, 
-    quality: quality as ChordQuality
+  const result: ParsedChord = {
+    root: root as Note,
+    quality: quality as ChordQuality,
   };
-  
+
   if (bassNote) {
     result.bassNote = bassNote;
   }
-  
+
   return result;
 }
 
@@ -239,13 +276,13 @@ function getChordFromString(chordString: string): Chord {
     root,
     quality: quality || 'maj',
     notes: chordNotes,
-    intervals: [...intervals]
+    intervals: [...intervals],
   };
-  
+
   if (bassNote) {
     result.bassNote = bassNote;
   }
-  
+
   return result;
 }
 
@@ -258,7 +295,8 @@ function findPossibleChords(selectedNotes: Note[], bassNote?: Note): ChordSugges
 
     for (const [quality, intervals] of Object.entries(chordFormulas)) {
       // 重複するコード表記をスキップ（推定結果では1つだけ表示）
-      if (quality === 'maj' || quality === '+5' || quality === 'min' || quality === 'min7') continue;
+      if (quality === 'maj' || quality === '+5' || quality === 'min' || quality === 'min7')
+        continue;
 
       const chordNotes = getChordNotes(rootNote, intervals);
       const chordNoteSet = new Set(chordNotes);
@@ -275,7 +313,7 @@ function findPossibleChords(selectedNotes: Note[], bassNote?: Note): ChordSugges
       if (isMatch) {
         const displayQuality = quality === '' ? '' : quality;
         let chordName = rootNote + displayQuality;
-        let finalNotes = [...chordNotes];
+        const finalNotes = [...chordNotes];
         let isExactMatch = false;
 
         // ベース音が指定されていて、ルート音と異なる場合はオンコード
@@ -293,8 +331,9 @@ function findPossibleChords(selectedNotes: Note[], bassNote?: Note): ChordSugges
 
           // オンコードの場合、finalNotesと選択された音が完全一致するかチェック
           const finalNoteSet = new Set(finalNotes);
-          isExactMatch = noteSet.size === finalNoteSet.size && 
-                        [...noteSet].every(note => finalNoteSet.has(note as Note));
+          isExactMatch =
+            noteSet.size === finalNoteSet.size &&
+            [...noteSet].every(note => finalNoteSet.has(note as Note));
         } else {
           // 通常のコードの場合
           let extraNotes = 0;
@@ -337,7 +376,12 @@ function findPossibleChords(selectedNotes: Note[], bassNote?: Note): ChordSugges
         }
 
         // 拡張コード（7、9、11、13など）は複雑度追加
-        if (quality.includes('7') || quality.includes('9') || quality.includes('11') || quality.includes('13')) {
+        if (
+          quality.includes('7') ||
+          quality.includes('9') ||
+          quality.includes('11') ||
+          quality.includes('13')
+        ) {
           simplicityScore += 3;
         }
 
@@ -360,13 +404,13 @@ function findPossibleChords(selectedNotes: Note[], bassNote?: Note): ChordSugges
           notes: finalNotes,
           matchScore: matchScore,
           exactMatch: isExactMatch,
-          simplicityScore: simplicityScore
+          simplicityScore: simplicityScore,
         };
-        
+
         if (bassNote) {
           chordSuggestion.bassNote = bassNote;
         }
-        
+
         possibleChords.push(chordSuggestion);
       }
     }
@@ -406,7 +450,7 @@ function findPossibleChords(selectedNotes: Note[], bassNote?: Note): ChordSugges
 
   return {
     exact: exactMatches.slice(0, 5),
-    partial: partialMatches.slice(0, 3)
+    partial: partialMatches.slice(0, 3),
   };
 }
 
@@ -444,5 +488,5 @@ export const MusicTheory: MusicTheoryInterface = {
   convertToNotation,
   normalizeNote,
   enharmonicEquivalents,
-  reverseEnharmonic
+  reverseEnharmonic,
 };
