@@ -11,7 +11,7 @@
     "minify:html": "npm run create:prod-html",
     "create:prod-html": "node scripts/create-prod-html.cjs",
     "create:bundle": "node scripts/create-bundle.cjs",
-    "minify:bundle": "terser dist/bundle.js -o dist/bundle.min.js -c passes=3,drop_console=true,drop_debugger=true,pure_funcs=['console.log','console.warn'] -m toplevel=true,properties=true,reserved=['AudioContext','webkitAudioContext']",
+    "minify:bundle": "terser dist/bundle.js -o dist/bundle.min.js -c passes=2,drop_console=true,drop_debugger=true,pure_funcs=['console.log','console.warn'] -m toplevel=false,keep_fnames=true,reserved=['AudioContext','webkitAudioContext']",
     "cleanup": "node scripts/cleanup-dist.cjs",
     "dev": "tsc --watch",
     "test": "jest",
