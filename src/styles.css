@@ -1,0 +1,433 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+    color: #e2e8f0;
+    line-height: 1.6;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(120, 213, 250, 0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 3rem 2rem;
+    position: relative;
+    z-index: 1;
+}
+
+h1 {
+    text-align: center;
+    font-size: 4rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, #4ade80, #06b6d4, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    background-size: 200% 200%;
+    animation: gradientShift 6s ease-in-out infinite;
+    letter-spacing: -0.02em;
+}
+
+@keyframes gradientShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+.subtitle {
+    text-align: center;
+    color: #94a3b8;
+    margin-bottom: 3rem;
+    font-size: 1.25rem;
+    font-weight: 500;
+    opacity: 0.9;
+}
+
+.controls-section {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 3rem;
+    margin-bottom: 3rem;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+    .controls-section {
+        flex-direction: column;
+        gap: 2rem;
+    }
+}
+
+.notation-toggle {
+    display: flex;
+    gap: 2rem;
+}
+
+.notation-toggle label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    color: #e0e0e0;
+    font-weight: 500;
+}
+
+.notation-toggle input[type="radio"] {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #4a4a4a;
+    border-radius: 50%;
+    margin: 0;
+    cursor: pointer;
+}
+
+.notation-toggle input[type="radio"]:checked {
+    background-color: #4CAF50;
+    border-color: #4CAF50;
+}
+
+.notation-toggle input[type="radio"]:checked::before {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 6px;
+    background-color: white;
+    border-radius: 50%;
+    margin: 3px;
+}
+
+.main-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+.section {
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 2.5rem;
+    border-radius: 24px;
+    box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.05);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+}
+
+.section:hover {
+    box-shadow: 
+        0 35px 60px -12px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.section h2 {
+    margin-bottom: 2rem;
+    color: #4ade80;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+}
+
+.chord-input-section {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.chord-input {
+    flex: 1;
+    padding: 1rem 1.25rem;
+    font-size: 1.1rem;
+    background: rgba(15, 23, 42, 0.8);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    color: #e2e8f0;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    font-weight: 500;
+}
+
+.chord-input:focus {
+    outline: none;
+    border-color: #4ade80;
+    background: rgba(15, 23, 42, 0.9);
+    box-shadow: 
+        0 0 0 4px rgba(74, 222, 128, 0.1),
+        0 10px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+.chord-input::placeholder {
+    color: #64748b;
+}
+
+.button {
+    padding: 1rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, #4ade80, #22c55e);
+    color: white;
+    border: none;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(74, 222, 128, 0.3);
+}
+
+.button:hover {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    box-shadow: 0 8px 25px rgba(74, 222, 128, 0.4);
+}
+
+.button:active {
+    transform: scale(0.98);
+}
+
+.button.secondary {
+    background: linear-gradient(135deg, #64748b, #475569);
+    box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3);
+}
+
+.button.secondary:hover {
+    background: linear-gradient(135deg, #475569, #334155);
+    box-shadow: 0 8px 25px rgba(100, 116, 139, 0.4);
+}
+
+.result-box {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 2rem;
+    border-radius: 20px;
+    min-height: 120px;
+    margin-top: 1.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.result-box::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+}
+
+.notes-selection {
+    margin-bottom: 1.5rem;
+}
+
+.note-buttons {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 480px) {
+    .note-buttons {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+.note-button {
+    padding: 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    background: rgba(15, 23, 42, 0.8);
+    color: #e2e8f0;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.note-button:hover {
+    background: rgba(30, 41, 59, 0.9);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.note-button.selected {
+    background: linear-gradient(135deg, #4ade80, #22c55e);
+    border-color: #4ade80;
+    color: white;
+    box-shadow: 0 6px 20px rgba(74, 222, 128, 0.4);
+}
+
+
+.chord-notes {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+
+.note-badge {
+    padding: 0.75rem 1.25rem;
+    background: linear-gradient(135deg, #4ade80, #22c55e);
+    color: white;
+    border-radius: 25px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 15px rgba(74, 222, 128, 0.3);
+    transition: all 0.3s ease;
+}
+
+.note-badge:hover {
+    box-shadow: 0 6px 20px rgba(74, 222, 128, 0.4);
+}
+
+.note-badge.bass-note {
+    background: linear-gradient(135deg, #06b6d4, #0891b2);
+    box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+}
+
+.chord-info {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #4a4a4a;
+}
+
+.chord-info p {
+    margin-bottom: 0.5rem;
+    color: #aaa;
+}
+
+.possible-chords {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.chord-option {
+    padding: 1rem;
+    background-color: #444;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.chord-option:hover {
+    background-color: #555;
+}
+
+.chord-option .chord-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #4CAF50;
+    margin-bottom: 0.25rem;
+}
+
+.chord-option .chord-notes-list {
+    color: #aaa;
+    font-size: 0.9rem;
+}
+
+.chord-option.exact-match {
+    border: 2px solid #4CAF50;
+}
+
+.chord-option.partial-match {
+    opacity: 0.8;
+    border: 1px solid #666;
+}
+
+.bass-note-section {
+    margin: 1rem 0;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.bass-note-section label {
+    color: #4CAF50;
+    font-weight: 500;
+}
+
+.bass-note-select {
+    flex: 1;
+    padding: 0.5rem;
+    background-color: #3a3a3a;
+    border: 2px solid #4a4a4a;
+    border-radius: 8px;
+    color: #e0e0e0;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.bass-note-select:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
+.timbre-selector {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.timbre-selector label {
+    color: #4CAF50;
+    font-weight: 500;
+}
+
+.timbre-select {
+    padding: 0.5rem;
+    background-color: #3a3a3a;
+    border: 2px solid #4a4a4a;
+    border-radius: 8px;
+    color: #e0e0e0;
+    font-size: 1rem;
+    cursor: pointer;
+    min-width: 180px;
+}
+
+.timbre-select:focus {
+    outline: none;
+    border-color: #4CAF50;
+}

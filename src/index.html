@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chordentia - コード解析ツール</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Chordentia</h1>
+        <p class="subtitle">コードの構成音を見て、聴いて、学ぶ</p>
+        
+        <div class="controls-section">
+            <div class="notation-toggle">
+                <label>
+                    <input type="radio" name="notation" value="sharp" checked>
+                    <span>♯ (シャープ)</span>
+                </label>
+                <label>
+                    <input type="radio" name="notation" value="flat">
+                    <span>♭ (フラット)</span>
+                </label>
+            </div>
+            
+            <div class="timbre-selector">
+                <label for="timbre-select">音色：</label>
+                <select id="timbre-select" class="timbre-select">
+                    <option value="sine">サイン波 (柔らかい)</option>
+                    <option value="triangle">三角波 (温かい)</option>
+                    <option value="sawtooth">ノコギリ波 (明るい)</option>
+                    <option value="square">矩形波 (太い)</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="section">
+                <h2>コードから構成音を見る</h2>
+                <div class="chord-input-section">
+                    <input type="text" id="chord-input" placeholder="例: C, Am7, G7" class="chord-input">
+                    <button id="play-chord" class="button">再生</button>
+                </div>
+                <div id="chord-result" class="result-box"></div>
+            </div>
+            
+            <div class="section">
+                <h2>構成音からコードを推定</h2>
+                <div class="notes-selection">
+                    <div class="note-buttons" id="note-buttons">
+                        <button class="note-button" data-note="C">C</button>
+                        <button class="note-button sharp-note" data-note="C#" data-flat="Db">C#</button>
+                        <button class="note-button" data-note="D">D</button>
+                        <button class="note-button sharp-note" data-note="D#" data-flat="Eb">D#</button>
+                        <button class="note-button" data-note="E">E</button>
+                        <button class="note-button" data-note="F">F</button>
+                        <button class="note-button sharp-note" data-note="F#" data-flat="Gb">F#</button>
+                        <button class="note-button" data-note="G">G</button>
+                        <button class="note-button sharp-note" data-note="G#" data-flat="Ab">G#</button>
+                        <button class="note-button" data-note="A">A</button>
+                        <button class="note-button sharp-note" data-note="A#" data-flat="Bb">A#</button>
+                        <button class="note-button" data-note="B">B</button>
+                    </div>
+                    <button id="clear-notes" class="button secondary">クリア</button>
+                    <button id="play-notes" class="button">再生</button>
+                </div>
+                <div class="bass-note-section">
+                    <label for="bass-note-select">ベース音（オプション）：</label>
+                    <select id="bass-note-select" class="bass-note-select">
+                        <option value="">なし</option>
+                    </select>
+                </div>
+                <div id="chord-suggestion" class="result-box"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module" src="dist/app.js"></script>
+</body>
+</html>

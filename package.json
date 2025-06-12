@@ -1,0 +1,40 @@
+{
+  "name": "chordentia",
+  "version": "1.0.0",
+  "description": "Interactive chord analysis tool",
+  "main": "dist/app.js",
+  "scripts": {
+    "build": "tsc && npm run minify:js && npm run minify:css && npm run minify:html && npm run cleanup && npm run validate",
+    "build:dev": "tsc",
+    "minify:js": "terser dist/app.js -o dist/app.min.js -c passes=3,drop_console=true,drop_debugger=true,pure_funcs=['console.log','console.warn'] -m toplevel=true,properties=true,reserved=['AudioContext','webkitAudioContext'] && terser dist/audio-player.js -o dist/audio-player.min.js -c passes=3,drop_console=true,drop_debugger=true -m toplevel=true,properties=true,reserved=['AudioContext','webkitAudioContext'] && terser dist/music-theory.js -o dist/music-theory.min.js -c passes=3,drop_console=true,drop_debugger=true -m toplevel=true,properties=true && terser dist/types.js -o dist/types.min.js -c passes=3,drop_console=true,drop_debugger=true -m toplevel=true,properties=true",
+    "minify:css": "cleancss src/styles.css -o dist/styles.min.css -O2",
+    "minify:html": "npm run create:prod-html",
+    "create:prod-html": "node scripts/create-prod-html.cjs",
+    "cleanup": "node scripts/cleanup-dist.cjs",
+    "dev": "tsc --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write src/**/*.ts",
+    "format:check": "prettier --check src/**/*.ts",
+    "validate": "node scripts/validate-build.cjs",
+    "ci": "npm run lint && npm run format:check && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "terser": "^5.0.0",
+    "clean-css-cli": "^5.0.0",
+    "html-minifier-terser": "^7.0.0",
+    "@types/jest": "^29.0.0",
+    "jest": "^29.0.0",
+    "jest-environment-jsdom": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "eslint": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "prettier": "^3.0.0"
+  },
+  "type": "module"
+}
