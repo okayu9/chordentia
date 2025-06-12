@@ -247,8 +247,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   playNotesBtn.addEventListener('click', () => {
     if (selectedNotes.length > 0) {
-      // アルペジオの代わりに同時再生
-      AudioPlayer.playChord(selectedNotes);
+      // ベース音指定がある場合はそれを考慮して再生
+      const selectedBassNote = bassNoteSelect.value || undefined;
+      AudioPlayer.playChord(selectedNotes, 4, 2, selectedBassNote as Note | undefined);
     }
   });
 
