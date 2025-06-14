@@ -40,6 +40,25 @@ describe('MusicTheory', () => {
       expect(result.root).toBe('A');
       expect(result.quality).toBe('m7');
     });
+
+    it('should parse complex chord with multiple extensions D7(9,#11,13)', () => {
+      const result = MusicTheory.parseChord('D7(9,#11,13)');
+      expect(result.root).toBe('D');
+      expect(result.quality).toBe('7(9,#11,13)');
+    });
+
+    it('should parse minor-major 13th chord AmM13', () => {
+      const result = MusicTheory.parseChord('AmM13');
+      expect(result.root).toBe('A');
+      expect(result.quality).toBe('mM13');
+    });
+
+    it('should parse minor-major chord with slash AmM13/D', () => {
+      const result = MusicTheory.parseChord('AmM13/D');
+      expect(result.root).toBe('A');
+      expect(result.quality).toBe('mM13');
+      expect(result.bassNote).toBe('D');
+    });
   });
 
   describe('getChordFromString', () => {
@@ -70,6 +89,28 @@ describe('MusicTheory', () => {
 
     it('should throw error for invalid chord quality', () => {
       expect(() => MusicTheory.getChordFromString('Cxyz')).toThrow('Invalid chord quality');
+    });
+
+    it('should generate chord notes for D7(9,#11,13)', () => {
+      const chord = MusicTheory.getChordFromString('D7(9,#11,13)');
+      expect(chord.root).toBe('D');
+      expect(chord.notes).toEqual(['D', 'F#', 'A', 'C', 'E', 'G#', 'B']);
+      expect(chord.quality).toBe('7(9,#11,13)');
+    });
+
+    it('should generate chord notes for AmM13', () => {
+      const chord = MusicTheory.getChordFromString('AmM13');
+      expect(chord.root).toBe('A');
+      expect(chord.notes).toEqual(['A', 'C', 'E', 'G#', 'B', 'D', 'F#']);
+      expect(chord.quality).toBe('mM13');
+    });
+
+    it('should handle AmM13/D with bass note', () => {
+      const chord = MusicTheory.getChordFromString('AmM13/D');
+      expect(chord.root).toBe('A');
+      expect(chord.notes).toEqual(['D', 'A', 'C', 'E', 'G#', 'B', 'F#']);
+      expect(chord.bassNote).toBe('D');
+      expect(chord.quality).toBe('mM13');
     });
   });
 
