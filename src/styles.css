@@ -564,6 +564,107 @@ h1 {
     border: 1px solid #666;
 }
 
+/* Chord suggestion grid styles */
+.chord-suggestions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+@media (max-width: 768px) {
+    .chord-suggestions-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .chord-suggestions-grid {
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+        gap: 0.5rem;
+    }
+}
+
+/* Chord suggestion button styles */
+.chord-suggestion-btn {
+    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #e2e8f0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-height: 80px;
+    justify-content: center;
+}
+
+.chord-suggestion-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #4CAF50;
+    line-height: 1.2;
+}
+
+.chord-suggestion-notes {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-weight: 400;
+    line-height: 1.3;
+    opacity: 0.9;
+}
+
+.chord-suggestion-btn:hover {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    border-color: #4CAF50;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+}
+
+.chord-suggestion-btn:hover .chord-suggestion-name {
+    color: #ffffff;
+}
+
+.chord-suggestion-btn:hover .chord-suggestion-notes {
+    color: #e2e8f0;
+    opacity: 1;
+}
+
+.chord-suggestion-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Section headers for exact/partial matches */
+.exact-match h4,
+.partial-match h4 {
+    color: #4CAF50;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.partial-match h4 {
+    color: #94a3b8;
+    border-bottom-color: rgba(148, 163, 184, 0.3);
+}
+
+.exact-match .chord-suggestion-btn {
+    border-color: rgba(76, 175, 80, 0.3);
+}
+
+.partial-match .chord-suggestion-btn {
+    opacity: 0.8;
+    border-color: rgba(148, 163, 184, 0.2);
+}
+
 .bass-note-section {
     margin: 1rem 0;
     display: flex;
