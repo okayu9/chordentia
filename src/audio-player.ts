@@ -1,123 +1,211 @@
 import type { Note, WaveType, AudioPlayerInterface } from './types.js';
 import { MusicTheory } from './music-theory.js';
+import {
+  AUDIO_DEFAULTS,
+  ARPEGGIO_DEFAULTS,
+  ENVELOPE_SETTINGS,
+  SUPPORTED_WAVE_TYPES,
+  DEFAULT_TIMBRE,
+} from './constants/audio-constants.js';
 
-let audioContext: AudioContext | null = null;
-let masterGain: GainNode | null = null;
-let currentTimbre: WaveType = 'sine';
+class AudioEngine {
+  private audioContext: AudioContext | null = null;
+  private masterGain: GainNode | null = null;
+  private currentTimbre: WaveType = DEFAULT_TIMBRE;
+  private activeOscillators: Set<OscillatorNode> = new Set();
 
-function init(): AudioContext {
-  if (!audioContext) {
-    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    masterGain = audioContext.createGain();
-    masterGain.connect(audioContext.destination);
-    masterGain.gain.value = 0.3;
-  }
-  return audioContext;
-}
-
-function playNote(frequency: number, duration: number = 1, startTime: number = 0): OscillatorNode {
-  const ctx = init();
-
-  const oscillator = ctx.createOscillator();
-  const envelope = ctx.createGain();
-
-  oscillator.connect(envelope);
-  envelope.connect(masterGain!);
-
-  oscillator.type = currentTimbre;
-  oscillator.frequency.value = frequency;
-
-  const now = ctx.currentTime + startTime;
-  envelope.gain.value = 0;
-  envelope.gain.linearRampToValueAtTime(0.3, now + 0.05);
-  envelope.gain.exponentialRampToValueAtTime(0.01, now + duration);
-
-  oscillator.start(now);
-  oscillator.stop(now + duration);
-
-  return oscillator;
-}
-
-function playChord(
-  notes: Note[],
-  octave: number = 4,
-  duration: number = 2,
-  bassNote?: Note
-): OscillatorNode[] {
-  const oscillators: OscillatorNode[] = [];
-
-  notes.forEach((note, index) => {
-    // ベース音（最初の音）は1オクターブ下げる
-    const noteOctave = bassNote && index === 0 && note === bassNote ? octave - 1 : octave;
-    const midiNote = MusicTheory.getMidiNote(note, noteOctave);
-    if (midiNote !== null) {
-      const frequency = MusicTheory.getFrequency(midiNote);
-      // startDelayを0にして同時再生
-      const osc = playNote(frequency, duration, 0);
-      oscillators.push(osc);
+  init(): AudioContext {
+    if (!this.audioContext) {
+      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      this.masterGain = this.audioContext.createGain();
+      this.masterGain.connect(this.audioContext.destination);
+      this.masterGain.gain.value = AUDIO_DEFAULTS.MASTER_VOLUME;
     }
-  });
+    return this.audioContext;
+  }
 
-  return oscillators;
-}
+  playNote(frequency: number, duration = AUDIO_DEFAULTS.DEFAULT_DURATION, startTime = 0): OscillatorNode {
+    const ctx = this.init();
+    
+    const oscillator = this.createOscillator(ctx, frequency);
+    const envelope = this.createEnvelope(ctx, duration, startTime);
+    
+    this.connectNodes(oscillator, envelope);
+    this.scheduleNote(oscillator, envelope, ctx.currentTime + startTime, duration);
+    
+    this.trackOscillator(oscillator, ctx.currentTime + startTime + duration);
+    
+    return oscillator;
+  }
 
-function playArpeggio(
-  notes: Note[],
-  octave: number = 4,
-  noteLength: number = 0.3,
-  gap: number = 0.1
-): OscillatorNode[] {
-  const oscillators: OscillatorNode[] = [];
+  playChord(
+    notes: Note[],
+    octave = AUDIO_DEFAULTS.DEFAULT_OCTAVE,
+    duration = AUDIO_DEFAULTS.DEFAULT_DURATION,
+    bassNote?: Note
+  ): OscillatorNode[] {
+    const oscillators: OscillatorNode[] = [];
 
-  notes.forEach((note, index) => {
+    for (let i = 0; i < notes.length; i++) {
+      const note = notes[i]!;
+      const noteOctave = this.calculateNoteOctave(note, bassNote, i, octave);
+      const frequency = this.getFrequencyForNote(note, noteOctave);
+      
+      if (frequency !== null) {
+        const oscillator = this.playNote(frequency, duration, 0);
+        oscillators.push(oscillator);
+      }
+    }
+
+    return oscillators;
+  }
+
+  playArpeggio(
+    notes: Note[],
+    octave = AUDIO_DEFAULTS.DEFAULT_OCTAVE,
+    noteLength = ARPEGGIO_DEFAULTS.NOTE_LENGTH,
+    gap = ARPEGGIO_DEFAULTS.GAP
+  ): OscillatorNode[] {
+    const oscillators: OscillatorNode[] = [];
+
+    for (let i = 0; i < notes.length; i++) {
+      const note = notes[i]!;
+      const frequency = this.getFrequencyForNote(note, octave);
+      
+      if (frequency !== null) {
+        const startTime = i * (noteLength + gap);
+        const oscillator = this.playNote(frequency, noteLength, startTime);
+        oscillators.push(oscillator);
+      }
+    }
+
+    return oscillators;
+  }
+
+  setVolume(value: number): void {
+    if (this.masterGain) {
+      const clampedValue = Math.max(
+        AUDIO_DEFAULTS.MIN_CHORD_VOLUME,
+        Math.min(AUDIO_DEFAULTS.MAX_CHORD_VOLUME, value)
+      );
+      this.masterGain.gain.value = clampedValue;
+    }
+  }
+
+  suspend(): void {
+    if (this.audioContext && this.audioContext.state === 'running') {
+      this.audioContext.suspend();
+    }
+  }
+
+  resume(): void {
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      this.audioContext.resume();
+    }
+  }
+
+  setTimbre(timbre: WaveType): void {
+    if (this.isValidWaveType(timbre)) {
+      this.currentTimbre = timbre;
+    }
+  }
+
+  getTimbre(): WaveType {
+    return this.currentTimbre;
+  }
+
+  stopAllNotes(): void {
+    this.activeOscillators.forEach((oscillator) => {
+      try {
+        oscillator.stop();
+      } catch (error) {
+        // Oscillator may already be stopped
+      }
+    });
+    this.activeOscillators.clear();
+  }
+
+  private createOscillator(ctx: AudioContext, frequency: number): OscillatorNode {
+    const oscillator = ctx.createOscillator();
+    oscillator.type = this.currentTimbre;
+    oscillator.frequency.value = frequency;
+    return oscillator;
+  }
+
+  private createEnvelope(ctx: AudioContext, duration: number, startTime: number): GainNode {
+    const envelope = ctx.createGain();
+    return envelope;
+  }
+
+  private connectNodes(oscillator: OscillatorNode, envelope: GainNode): void {
+    oscillator.connect(envelope);
+    envelope.connect(this.masterGain!);
+  }
+
+  private scheduleNote(
+    oscillator: OscillatorNode,
+    envelope: GainNode,
+    startTime: number,
+    duration: number
+  ): void {
+    // Configure envelope
+    envelope.gain.value = 0;
+    envelope.gain.linearRampToValueAtTime(
+      AUDIO_DEFAULTS.NOTE_VOLUME,
+      startTime + ENVELOPE_SETTINGS.ATTACK_TIME
+    );
+    envelope.gain.exponentialRampToValueAtTime(
+      AUDIO_DEFAULTS.MIN_VOLUME,
+      startTime + duration
+    );
+
+    // Schedule oscillator
+    oscillator.start(startTime);
+    oscillator.stop(startTime + duration);
+  }
+
+  private trackOscillator(oscillator: OscillatorNode, stopTime: number): void {
+    this.activeOscillators.add(oscillator);
+    
+    // Remove from tracking when finished
+    oscillator.addEventListener('ended', () => {
+      this.activeOscillators.delete(oscillator);
+    });
+    
+    // Fallback cleanup
+    setTimeout(() => {
+      this.activeOscillators.delete(oscillator);
+    }, (stopTime - this.audioContext!.currentTime + 0.1) * 1000);
+  }
+
+  private calculateNoteOctave(note: Note, bassNote: Note | undefined, index: number, octave: number): number {
+    // Bass note (first note) is played one octave lower
+    const isBassNote = bassNote && index === 0 && note === bassNote;
+    return isBassNote ? octave + AUDIO_DEFAULTS.BASS_OCTAVE_OFFSET : octave;
+  }
+
+  private getFrequencyForNote(note: Note, octave: number): number | null {
     const midiNote = MusicTheory.getMidiNote(note, octave);
-    if (midiNote !== null) {
-      const frequency = MusicTheory.getFrequency(midiNote);
-      const startTime = index * (noteLength + gap);
-      const osc = playNote(frequency, noteLength, startTime);
-      oscillators.push(osc);
-    }
-  });
+    return midiNote !== null ? MusicTheory.getFrequency(midiNote) : null;
+  }
 
-  return oscillators;
-}
-
-function setVolume(value: number): void {
-  if (masterGain) {
-    masterGain.gain.value = Math.max(0, Math.min(1, value));
+  private isValidWaveType(timbre: string): timbre is WaveType {
+    return SUPPORTED_WAVE_TYPES.includes(timbre as WaveType);
   }
 }
 
-function suspend(): void {
-  if (audioContext && audioContext.state === 'running') {
-    audioContext.suspend();
-  }
-}
+// Create singleton instance
+const audioEngine = new AudioEngine();
 
-function resume(): void {
-  if (audioContext && audioContext.state === 'suspended') {
-    audioContext.resume();
-  }
-}
-
-function setTimbre(timbre: WaveType): void {
-  if (['sine', 'square', 'sawtooth', 'triangle'].includes(timbre)) {
-    currentTimbre = timbre;
-  }
-}
-
-function getTimbre(): WaveType {
-  return currentTimbre;
-}
-
+// Export the interface
 export const AudioPlayer: AudioPlayerInterface = {
-  init,
-  playNote,
-  playChord,
-  playArpeggio,
-  setVolume,
-  suspend,
-  resume,
-  setTimbre,
-  getTimbre,
+  init: () => audioEngine.init(),
+  playNote: (frequency, duration, startTime) => audioEngine.playNote(frequency, duration, startTime),
+  playChord: (notes, octave, duration, bassNote) => audioEngine.playChord(notes, octave, duration, bassNote),
+  playArpeggio: (notes, octave, noteLength, gap) => audioEngine.playArpeggio(notes, octave, noteLength, gap),
+  setVolume: (value) => audioEngine.setVolume(value),
+  suspend: () => audioEngine.suspend(),
+  resume: () => audioEngine.resume(),
+  setTimbre: (timbre) => audioEngine.setTimbre(timbre),
+  getTimbre: () => audioEngine.getTimbre(),
 };
