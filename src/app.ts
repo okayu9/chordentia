@@ -1,28 +1,275 @@
-import type { Note, Chord, ChordSuggestion, ChordSuggestionResult, WaveType } from './types.js';
+import type { Note, Chord, ChordSuggestionResult } from './types.js';
 import { MusicTheory } from './music-theory.js';
 import { AudioPlayer } from './audio-player.js';
+import { MIN_NOTES_FOR_CHORD_SUGGESTION, DEFAULT_OCTAVE, DEFAULT_DURATION } from './constants/music-constants.js';
+import { SELECTORS, CSS_CLASSES, HTML_ATTRIBUTES, MESSAGES, COLORS } from './constants/ui-constants.js';
+import {
+  getElementById,
+  querySelectorAll,
+  createOption,
+  clearElement,
+  setHTML,
+  addClass,
+  removeClass,
+  toggleClass,
+  hasClass,
+} from './utils/dom-utils.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-  const chordInput = document.getElementById('chord-input') as HTMLInputElement;
-  const playChordBtn = document.getElementById('play-chord') as HTMLButtonElement;
-  const chordResult = document.getElementById('chord-result') as HTMLDivElement;
+interface AppState {
+  selectedNotes: Note[];
+  currentChord: Chord | null;
+  currentChordNotes: Note[];
+  useFlats: boolean;
+}
 
-  const noteButtons = document.querySelectorAll('.note-button') as NodeListOf<HTMLButtonElement>;
-  const clearNotesBtn = document.getElementById('clear-notes') as HTMLButtonElement;
-  const playNotesBtn = document.getElementById('play-notes') as HTMLButtonElement;
-  const chordSuggestion = document.getElementById('chord-suggestion') as HTMLDivElement;
-  const bassNoteSelect = document.getElementById('bass-note-select') as HTMLSelectElement;
-  const notationRadios = document.querySelectorAll(
-    'input[name="notation"]'
-  ) as NodeListOf<HTMLInputElement>;
-  const timbreSelect = document.getElementById('timbre-select') as HTMLSelectElement;
+class ChordentiaApp {
+  private state: AppState = {
+    selectedNotes: [],
+    currentChord: null,
+    currentChordNotes: [],
+    useFlats: false,
+  };
 
-  let selectedNotes: Note[] = [];
-  let currentChordNotes: Note[] = [];
-  let currentChord: Chord | null = null;
-  let useFlats: boolean = false;
+  private elements: {
+    chordInput: HTMLInputElement;
+    playChordBtn: HTMLButtonElement;
+    chordResult: HTMLDivElement;
+    noteButtons: NodeListOf<HTMLButtonElement>;
+    clearNotesBtn: HTMLButtonElement;
+    playNotesBtn: HTMLButtonElement;
+    chordSuggestion: HTMLDivElement;
+    bassNoteSelect: HTMLSelectElement;
+    notationRadios: NodeListOf<HTMLInputElement>;
+    timbreSelect: HTMLSelectElement;
+  };
 
-  function convertChordNameToFlat(chordName: string): string {
+  constructor() {
+    this.elements = this.initializeElements();
+    this.initializeEventListeners();
+    this.initializeUI();
+  }
+
+  private initializeElements() {
+    return {
+      chordInput: getElementById<HTMLInputElement>(SELECTORS.CHORD_INPUT.slice(1)),
+      playChordBtn: getElementById<HTMLButtonElement>(SELECTORS.PLAY_CHORD_BTN.slice(1)),
+      chordResult: getElementById<HTMLDivElement>(SELECTORS.CHORD_RESULT.slice(1)),
+      noteButtons: querySelectorAll<HTMLButtonElement>(SELECTORS.NOTE_BUTTONS),
+      clearNotesBtn: getElementById<HTMLButtonElement>(SELECTORS.CLEAR_NOTES_BTN.slice(1)),
+      playNotesBtn: getElementById<HTMLButtonElement>(SELECTORS.PLAY_NOTES_BTN.slice(1)),
+      chordSuggestion: getElementById<HTMLDivElement>(SELECTORS.CHORD_SUGGESTION.slice(1)),
+      bassNoteSelect: getElementById<HTMLSelectElement>(SELECTORS.BASS_NOTE_SELECT.slice(1)),
+      notationRadios: querySelectorAll<HTMLInputElement>(SELECTORS.NOTATION_RADIOS),
+      timbreSelect: getElementById<HTMLSelectElement>(SELECTORS.TIMBRE_SELECT.slice(1)),
+    };
+  }
+
+  private initializeEventListeners(): void {
+    // Chord input events
+    this.elements.chordInput.addEventListener('input', () => this.analyzeChordInput());
+    this.elements.chordInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        this.elements.playChordBtn.click();
+      }
+    });
+
+    // Play chord button
+    this.elements.playChordBtn.addEventListener('click', () => this.playCurrentChord());
+
+    // Note buttons
+    this.elements.noteButtons.forEach((button) => {
+      button.addEventListener('click', () => this.handleNoteButtonClick(button));
+    });
+
+    // Control buttons
+    this.elements.clearNotesBtn.addEventListener('click', () => this.clearSelectedNotes());
+    this.elements.playNotesBtn.addEventListener('click', () => this.playSelectedNotes());
+
+    // Bass note selection
+    this.elements.bassNoteSelect.addEventListener('change', () => this.handleBassNoteChange());
+
+    // Notation system change
+    this.elements.notationRadios.forEach((radio) => {
+      radio.addEventListener('change', () => this.handleNotationChange(radio));
+    });
+
+    // Timbre selection
+    this.elements.timbreSelect.addEventListener('change', () => this.handleTimbreChange());
+  }
+
+  private initializeUI(): void {
+    this.updateNoteButtons();
+    setHTML(this.elements.chordResult, MESSAGES.EMPTY_CHORD_INPUT);
+  }
+
+  private updateNoteButtons(): void {
+    this.elements.noteButtons.forEach((button) => {
+      if (hasClass(button, CSS_CLASSES.SHARP_NOTE)) {
+        if (this.state.useFlats) {
+          button.textContent = button.dataset[HTML_ATTRIBUTES.FLAT] || '';
+          button.dataset[HTML_ATTRIBUTES.CURRENT_NOTE] = button.dataset[HTML_ATTRIBUTES.FLAT];
+        } else {
+          button.textContent = button.dataset[HTML_ATTRIBUTES.NOTE] || '';
+          button.dataset[HTML_ATTRIBUTES.CURRENT_NOTE] = button.dataset[HTML_ATTRIBUTES.NOTE];
+        }
+      } else {
+        button.dataset[HTML_ATTRIBUTES.CURRENT_NOTE] = button.dataset[HTML_ATTRIBUTES.NOTE];
+      }
+    });
+  }
+
+  private analyzeChordInput(): void {
+    const chordString = this.elements.chordInput.value.trim();
+    
+    if (!chordString) {
+      setHTML(this.elements.chordResult, MESSAGES.EMPTY_CHORD_INPUT);
+      this.state.currentChord = null;
+      this.state.currentChordNotes = [];
+      return;
+    }
+
+    try {
+      const chord = MusicTheory.getChordFromString(chordString);
+      this.displayChordAnalysis(chord);
+    } catch (error) {
+      // Invalid chord - clear current state but don't show error
+      this.state.currentChord = null;
+      this.state.currentChordNotes = [];
+    }
+  }
+
+  private displayChordAnalysis(chord: Chord): void {
+    const { root, quality, notes, bassNote } = chord;
+
+    // Convert to appropriate notation
+    const displayNotes = MusicTheory.convertToNotation(notes, this.state.useFlats);
+    const displayRoot = this.convertNoteToDisplay(root);
+    const displayBass = bassNote ? this.convertNoteToDisplay(bassNote) : null;
+
+    const chordName = this.formatChordName(displayRoot, quality, displayBass);
+    const noteBadges = this.createNoteBadges(displayNotes, displayBass);
+
+    const html = `
+      <h3 style="color: ${COLORS.PRIMARY}; margin-bottom: 1rem;">${chordName}</h3>
+      <div class="${CSS_CLASSES.CHORD_NOTES}">
+        ${noteBadges}
+      </div>
+      <div class="${CSS_CLASSES.CHORD_INFO}">
+        <p>${MESSAGES.ROOT_LABEL}${displayRoot}</p>
+        <p>${MESSAGES.CHORD_TYPE_LABEL}${quality}</p>
+        ${displayBass ? `<p>${MESSAGES.BASS_NOTE_LABEL}${displayBass}</p>` : ''}
+        <p>${MESSAGES.NOTES_LABEL}${displayNotes.join(' - ')}</p>
+      </div>
+    `;
+
+    setHTML(this.elements.chordResult, html);
+    this.state.currentChordNotes = notes;
+    this.state.currentChord = chord;
+  }
+
+  private convertNoteToDisplay(note: Note): string {
+    return this.state.useFlats ? (MusicTheory.enharmonicEquivalents[note] || note) : note;
+  }
+
+  private formatChordName(root: string, quality: string, bassNote?: string | null): string {
+    let name = root + (quality === 'maj' ? '' : quality);
+    if (bassNote) {
+      name += '/' + bassNote;
+    }
+    return name;
+  }
+
+  private createNoteBadges(notes: Note[], bassNote?: string | null): string {
+    return notes
+      .map((note, index) => {
+        const isBass = bassNote && index === 0 && note === bassNote;
+        const badgeClass = `${CSS_CLASSES.NOTE_BADGE}${isBass ? ` ${CSS_CLASSES.BASS_NOTE}` : ''}`;
+        const label = isBass ? `${note}${MESSAGES.BASS_LABEL}` : note;
+        return `<span class="${badgeClass}">${label}</span>`;
+      })
+      .join('');
+  }
+
+  private handleNoteButtonClick(button: HTMLButtonElement): void {
+    const note = button.dataset[HTML_ATTRIBUTES.CURRENT_NOTE] || button.dataset[HTML_ATTRIBUTES.NOTE] || '';
+    const normalizedNote = MusicTheory.normalizeNote(note as Note);
+
+    if (hasClass(button, CSS_CLASSES.SELECTED)) {
+      removeClass(button, CSS_CLASSES.SELECTED);
+      this.state.selectedNotes = this.state.selectedNotes.filter(
+        (n) => MusicTheory.normalizeNote(n) !== normalizedNote
+      );
+    } else {
+      addClass(button, CSS_CLASSES.SELECTED);
+      this.state.selectedNotes.push(normalizedNote);
+    }
+
+    this.updateSelectedNotesDisplay();
+  }
+
+  private updateSelectedNotesDisplay(): void {
+    if (this.state.selectedNotes.length === 0) {
+      clearElement(this.elements.chordSuggestion);
+    } else if (this.state.selectedNotes.length >= MIN_NOTES_FOR_CHORD_SUGGESTION) {
+      this.findAndDisplayChords();
+    } else {
+      setHTML(this.elements.chordSuggestion, MESSAGES.SELECT_MORE_NOTES);
+    }
+    this.updateBassNoteOptions();
+  }
+
+  private findAndDisplayChords(): void {
+    const selectedBassNote = this.elements.bassNoteSelect.value || undefined;
+    const possibleChords = MusicTheory.findPossibleChords(
+      this.state.selectedNotes,
+      selectedBassNote as Note | undefined
+    );
+    this.displayChordSuggestions(possibleChords);
+  }
+
+  private displayChordSuggestions(chordResults: ChordSuggestionResult): void {
+    const { exact, partial } = chordResults;
+
+    if (exact.length === 0 && partial.length === 0) {
+      setHTML(this.elements.chordSuggestion, MESSAGES.NO_CHORDS_FOUND);
+      return;
+    }
+
+    const exactHTML = this.createChordSuggestionHTML(exact, MESSAGES.EXACT_MATCHES_TITLE, CSS_CLASSES.EXACT_MATCH);
+    const partialHTML = this.createChordSuggestionHTML(partial, MESSAGES.PARTIAL_MATCHES_TITLE, CSS_CLASSES.PARTIAL_MATCH);
+
+    setHTML(this.elements.chordSuggestion, exactHTML + partialHTML);
+    this.attachChordSuggestionListeners();
+  }
+
+  private createChordSuggestionHTML(suggestions: any[], title: string, className: string): string {
+    if (suggestions.length === 0) return '';
+
+    const items = suggestions
+      .slice(0, 10) // Limit to first 10 suggestions
+      .map((chord) => {
+        const displayName = this.state.useFlats ? this.convertChordNameToFlat(chord.name) : chord.name;
+        const displayNotes = MusicTheory.convertToNotation(chord.notes, this.state.useFlats);
+        const notesString = displayNotes.join(' - ');
+        
+        return `
+          <button class="chord-suggestion-btn" data-chord="${chord.name}">
+            <div class="chord-suggestion-name">${displayName}</div>
+            <div class="chord-suggestion-notes">${notesString}</div>
+          </button>
+        `;
+      })
+      .join('');
+
+    return `
+      <div class="${className}">
+        <h4>${title}</h4>
+        <div class="chord-suggestions-grid">${items}</div>
+      </div>
+    `;
+  }
+
+  private convertChordNameToFlat(chordName: string): string {
     let result = chordName;
     for (const [sharp, flat] of Object.entries(MusicTheory.enharmonicEquivalents)) {
       result = result.replace(new RegExp(sharp, 'g'), flat);
@@ -30,270 +277,108 @@ document.addEventListener('DOMContentLoaded', () => {
     return result;
   }
 
-  function updateNoteButtons(): void {
-    const noteButtons = document.querySelectorAll('.note-button') as NodeListOf<HTMLButtonElement>;
-    noteButtons.forEach(button => {
-      if (button.classList.contains('sharp-note')) {
-        if (useFlats) {
-          button.textContent = button.dataset.flat || '';
-          button.dataset.currentNote = button.dataset.flat;
-        } else {
-          button.textContent = button.dataset.note || '';
-          button.dataset.currentNote = button.dataset.note;
-        }
-      } else {
-        button.dataset.currentNote = button.dataset.note;
-      }
-    });
-  }
-
-  function displayChordAnalysis(chord: Chord): void {
-    const { root, quality, notes, bassNote } = chord;
-
-    // 表記法に応じて音名を変換
-    const displayNotes = MusicTheory.convertToNotation(notes, useFlats);
-    const displayRoot = useFlats ? MusicTheory.enharmonicEquivalents[root] || root : root;
-    const displayBass = bassNote
-      ? useFlats
-        ? MusicTheory.enharmonicEquivalents[bassNote] || bassNote
-        : bassNote
-      : null;
-
-    let chordName = displayRoot + (quality === 'maj' ? '' : quality);
-
-    // オンコードの場合、ベース音を表示
-    if (displayBass) {
-      chordName += '/' + displayBass;
-    }
-
-    const html = `
-      <h3 style="color: #4CAF50; margin-bottom: 1rem;">${chordName}</h3>
-      <div class="chord-notes">
-        ${displayNotes
-          .map((note, index) => {
-            // ベース音を強調表示
-            const isBass = displayBass && index === 0 && note === displayBass;
-            return `<span class="note-badge${isBass ? ' bass-note' : ''}">${note}${isBass ? ' (bass)' : ''}</span>`;
-          })
-          .join('')}
-      </div>
-      <div class="chord-info">
-        <p>ルート音: ${displayRoot}</p>
-        <p>コードタイプ: ${quality}</p>
-        ${displayBass ? `<p>ベース音: ${displayBass}</p>` : ''}
-        <p>構成音: ${displayNotes.join(' - ')}</p>
-      </div>
-    `;
-
-    chordResult.innerHTML = html;
-    currentChordNotes = notes;
-    currentChord = chord;
-  }
-
-  function displayChordSuggestions(chordResults: ChordSuggestionResult): void {
-    const { exact, partial } = chordResults;
-
-    if (exact.length === 0 && partial.length === 0) {
-      chordSuggestion.innerHTML =
-        '<p style="color: #888;">該当するコードが見つかりませんでした</p>';
-      return;
-    }
-
-    let html = '<div class="possible-chords">';
-
-    // 完全一致のコード
-    if (exact.length > 0) {
-      html += '<h4 style="color: #4CAF50; margin-bottom: 0.5rem;">完全一致</h4>';
-      exact.forEach(chord => {
-        const displayName = useFlats ? convertChordNameToFlat(chord.name) : chord.name;
-        const displayNotes = MusicTheory.convertToNotation(chord.notes, useFlats);
-        html += `
-          <div class="chord-option exact-match" data-chord='${JSON.stringify(chord)}'>
-            <div class="chord-name">${displayName}</div>
-            <div class="chord-notes-list">構成音: ${displayNotes.join(', ')}</div>
-          </div>
-        `;
-      });
-    }
-
-    // 部分一致のコード
-    if (partial.length > 0) {
-      html +=
-        '<h4 style="color: #888; margin-top: 1rem; margin-bottom: 0.5rem;">部分一致（一部の音を使用）</h4>';
-      partial.forEach(chord => {
-        const displayName = useFlats ? convertChordNameToFlat(chord.name) : chord.name;
-        const displayNotes = MusicTheory.convertToNotation(chord.notes, useFlats);
-        html += `
-          <div class="chord-option partial-match" data-chord='${JSON.stringify(chord)}'>
-            <div class="chord-name">${displayName}</div>
-            <div class="chord-notes-list">構成音: ${displayNotes.join(', ')}</div>
-          </div>
-        `;
-      });
-    }
-
-    html += '</div>';
-
-    chordSuggestion.innerHTML = html;
-
-    document.querySelectorAll('.chord-option').forEach(option => {
-      (option as HTMLElement).addEventListener('click', function () {
-        const chord: ChordSuggestion = JSON.parse((this as HTMLElement).dataset.chord!);
-        AudioPlayer.playChord(chord.notes, 4, 2, chord.bassNote);
+  private attachChordSuggestionListeners(): void {
+    const suggestionButtons = this.elements.chordSuggestion.querySelectorAll('.chord-suggestion-btn');
+    suggestionButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const chordName = (button as HTMLElement).dataset.chord || '';
+        this.playChordByName(chordName);
       });
     });
   }
 
-  function updateSelectedNotesDisplay(): void {
-    if (selectedNotes.length === 0) {
-      chordSuggestion.innerHTML = '';
-    } else {
-      // 2つ以上の音が選択されたら自動的にコード推定
-      if (selectedNotes.length >= 2) {
-        findAndDisplayChords();
-      } else {
-        chordSuggestion.innerHTML =
-          '<p style="color: #888;">2つ以上の音を選択するとコードを推定します</p>';
-      }
-    }
-    updateBassNoteOptions();
-  }
-
-  function updateBassNoteOptions(): void {
-    const currentValue = bassNoteSelect.value;
-    bassNoteSelect.innerHTML = '<option value="">なし</option>';
-    selectedNotes.forEach(note => {
-      const option = document.createElement('option');
-      option.value = note;
-      const displayNote = useFlats ? MusicTheory.enharmonicEquivalents[note] || note : note;
-      option.textContent = displayNote;
-      bassNoteSelect.appendChild(option);
-    });
-    // 以前の選択を維持（可能な場合）
-    if (currentValue && selectedNotes.includes(currentValue as Note)) {
-      bassNoteSelect.value = currentValue;
-    }
-  }
-
-  function analyzeChordInput(): void {
-    const chordString = chordInput.value.trim();
-    if (!chordString) {
-      chordResult.innerHTML = '<p style="color: #888;">コードを入力すると構成音が表示されます</p>';
-      currentChord = null;
-      currentChordNotes = [];
-      return;
-    }
-
+  private playChordByName(chordName: string): void {
     try {
-      const chord = MusicTheory.getChordFromString(chordString);
-      displayChordAnalysis(chord);
+      const chord = MusicTheory.getChordFromString(chordName);
+      AudioPlayer.playChord(chord.notes, DEFAULT_OCTAVE, DEFAULT_DURATION, chord.bassNote);
     } catch (error) {
-      // 無効なコードの場合は何も表示しない（前の結果を残す）
-      // ただし、currentChordはクリアする
-      currentChord = null;
-      currentChordNotes = [];
+      console.error('Failed to play chord:', chordName);
     }
   }
 
-  playChordBtn.addEventListener('click', () => {
-    if (currentChord && currentChordNotes.length > 0) {
-      AudioPlayer.playChord(currentChordNotes, 4, 2, currentChord.bassNote);
+  private clearSelectedNotes(): void {
+    this.state.selectedNotes = [];
+    this.elements.noteButtons.forEach((btn) => removeClass(btn, CSS_CLASSES.SELECTED));
+    this.updateSelectedNotesDisplay();
+    clearElement(this.elements.chordSuggestion);
+    this.elements.bassNoteSelect.value = '';
+  }
+
+  private playSelectedNotes(): void {
+    if (this.state.selectedNotes.length > 0) {
+      const selectedBassNote = this.elements.bassNoteSelect.value || undefined;
+      AudioPlayer.playChord(
+        this.state.selectedNotes,
+        DEFAULT_OCTAVE,
+        DEFAULT_DURATION,
+        selectedBassNote as Note | undefined
+      );
+    }
+  }
+
+  private playCurrentChord(): void {
+    if (this.state.currentChord && this.state.currentChordNotes.length > 0) {
+      AudioPlayer.playChord(
+        this.state.currentChordNotes,
+        DEFAULT_OCTAVE,
+        DEFAULT_DURATION,
+        this.state.currentChord.bassNote
+      );
     } else {
-      const chordString = chordInput.value.trim();
+      const chordString = this.elements.chordInput.value.trim();
       if (chordString) {
-        try {
-          const chord = MusicTheory.getChordFromString(chordString);
-          AudioPlayer.playChord(chord.notes, 4, 2, chord.bassNote);
-        } catch (error) {
-          console.error('コードの再生に失敗しました');
-        }
+        this.playChordByName(chordString);
       }
     }
-  });
-
-  noteButtons.forEach(button => {
-    button.addEventListener('click', function () {
-      const note = this.dataset.currentNote || this.dataset.note || '';
-      const normalizedNote = MusicTheory.normalizeNote(note as Note);
-
-      if (this.classList.contains('selected')) {
-        this.classList.remove('selected');
-        selectedNotes = selectedNotes.filter(n => MusicTheory.normalizeNote(n) !== normalizedNote);
-      } else {
-        this.classList.add('selected');
-        selectedNotes.push(normalizedNote);
-      }
-
-      updateSelectedNotesDisplay();
-    });
-  });
-
-  clearNotesBtn.addEventListener('click', () => {
-    selectedNotes = [];
-    noteButtons.forEach(btn => btn.classList.remove('selected'));
-    updateSelectedNotesDisplay();
-    chordSuggestion.innerHTML = '';
-    bassNoteSelect.value = '';
-  });
-
-  function findAndDisplayChords(): void {
-    const selectedBassNote = bassNoteSelect.value || undefined;
-    const possibleChords = MusicTheory.findPossibleChords(
-      selectedNotes,
-      selectedBassNote as Note | undefined
-    );
-    displayChordSuggestions(possibleChords);
   }
 
-  playNotesBtn.addEventListener('click', () => {
-    if (selectedNotes.length > 0) {
-      // ベース音指定がある場合はそれを考慮して再生
-      const selectedBassNote = bassNoteSelect.value || undefined;
-      AudioPlayer.playChord(selectedNotes, 4, 2, selectedBassNote as Note | undefined);
+  private handleBassNoteChange(): void {
+    if (this.state.selectedNotes.length >= MIN_NOTES_FOR_CHORD_SUGGESTION) {
+      this.findAndDisplayChords();
     }
-  });
+  }
 
-  // コード入力の自動解析
-  chordInput.addEventListener('input', analyzeChordInput);
-  chordInput.addEventListener('keypress', e => {
-    if (e.key === 'Enter') {
-      // Enterキーで再生
-      playChordBtn.click();
+  private handleNotationChange(radio: HTMLInputElement): void {
+    this.state.useFlats = radio.value === 'flat';
+    this.updateNoteButtons();
+
+    // Update current chord display if exists
+    if (this.state.currentChord) {
+      this.displayChordAnalysis(this.state.currentChord);
     }
-  });
 
-  // ベース音選択が変更されたときも自動的にコード推定
-  bassNoteSelect.addEventListener('change', () => {
-    if (selectedNotes.length >= 2) {
-      findAndDisplayChords();
+    // Update chord suggestions if any
+    if (this.state.selectedNotes.length >= MIN_NOTES_FOR_CHORD_SUGGESTION) {
+      this.findAndDisplayChords();
     }
-  });
+  }
 
-  // 表記法変更のイベントリスナー
-  notationRadios.forEach(radio => {
-    radio.addEventListener('change', function () {
-      useFlats = this.value === 'flat';
-      updateNoteButtons();
+  private handleTimbreChange(): void {
+    const timbre = this.elements.timbreSelect.value;
+    AudioPlayer.setTimbre(timbre as any);
+  }
 
-      // 現在の解析結果を更新
-      if (currentChord) {
-        displayChordAnalysis(currentChord);
-      }
-
-      // 現在の推定結果を更新
-      if (selectedNotes.length >= 2) {
-        findAndDisplayChords();
-      }
+  private updateBassNoteOptions(): void {
+    const currentValue = this.elements.bassNoteSelect.value;
+    clearElement(this.elements.bassNoteSelect);
+    
+    // Add default "none" option
+    this.elements.bassNoteSelect.appendChild(createOption('', MESSAGES.BASS_NONE_OPTION));
+    
+    // Add selected notes as bass options
+    this.state.selectedNotes.forEach((note) => {
+      const displayNote = this.convertNoteToDisplay(note);
+      this.elements.bassNoteSelect.appendChild(createOption(note, displayNote));
     });
-  });
 
-  // 音色変更のイベントリスナー
-  timbreSelect.addEventListener('change', function () {
-    AudioPlayer.setTimbre(this.value as WaveType);
-  });
+    // Restore previous selection if still valid
+    if (currentValue && this.state.selectedNotes.includes(currentValue as Note)) {
+      this.elements.bassNoteSelect.value = currentValue;
+    }
+  }
+}
 
-  // 初期表示
-  analyzeChordInput();
-  updateNoteButtons();
-  updateSelectedNotesDisplay();
+// Initialize the application when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  new ChordentiaApp();
 });
