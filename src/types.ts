@@ -36,7 +36,7 @@ export type Note =
 /**
  * Available audio waveform types for synthesis
  */
-export type WaveType = 'sine' | 'square' | 'sawtooth' | 'triangle';
+export type WaveType = 'square' | 'sawtooth' | 'triangle' | 'organ';
 
 /**
  * All supported chord qualities and variations

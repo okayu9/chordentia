@@ -4,6 +4,7 @@ import {
   AUDIO_DEFAULTS,
   ARPEGGIO_DEFAULTS,
   ENVELOPE_SETTINGS,
+  ORGAN_SETTINGS,
   SUPPORTED_WAVE_TYPES,
   DEFAULT_TIMBRE,
 } from './constants/audio-constants.js';
@@ -26,6 +27,10 @@ class AudioEngine {
 
   playNote(frequency: number, duration = AUDIO_DEFAULTS.DEFAULT_DURATION, startTime = 0): OscillatorNode {
     const ctx = this.init();
+    
+    if (this.currentTimbre === 'organ') {
+      return this.playOrganNote(ctx, frequency, duration, startTime);
+    }
     
     const oscillator = this.createOscillator(ctx, frequency);
     const envelope = this.createEnvelope(ctx, duration, startTime);
@@ -127,7 +132,7 @@ class AudioEngine {
 
   private createOscillator(ctx: AudioContext, frequency: number): OscillatorNode {
     const oscillator = ctx.createOscillator();
-    oscillator.type = this.currentTimbre;
+    oscillator.type = this.currentTimbre as OscillatorType;
     oscillator.frequency.value = frequency;
     return oscillator;
   }
@@ -191,6 +196,113 @@ class AudioEngine {
 
   private isValidWaveType(timbre: string): timbre is WaveType {
     return SUPPORTED_WAVE_TYPES.includes(timbre as WaveType);
+  }
+
+  private playOrganNote(ctx: AudioContext, frequency: number, duration: number, startTime: number): OscillatorNode {
+    const now = ctx.currentTime + startTime;
+    
+    // Create multiple oscillators for drawbar harmonics
+    const oscillators: OscillatorNode[] = [];
+    
+    // Create main connection point
+    const organGain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    
+    // Configure filter for organ tone
+    filter.type = 'lowpass';
+    filter.frequency.value = ORGAN_SETTINGS.FILTER_FREQUENCY;
+    filter.Q.value = ORGAN_SETTINGS.FILTER_Q;
+    
+    // Create harmonics using drawbar-inspired synthesis
+    const drawbarRatios = [0.5, 1, 1.5, 2, 3, 4, 5, 6, 8]; // Hammond organ harmonic ratios
+    
+    for (let i = 0; i < ORGAN_SETTINGS.HARMONICS.length && i < drawbarRatios.length; i++) {
+      const amplitude = ORGAN_SETTINGS.HARMONICS[i]!;
+      
+      if (amplitude > 0.05) {
+        const osc = ctx.createOscillator();
+        const env = ctx.createGain();
+        const vibrato = ctx.createOscillator();
+        const vibratoGain = ctx.createGain();
+        
+        // Main oscillator
+        osc.type = 'sine';
+        osc.frequency.value = frequency * drawbarRatios[i]!;
+        
+        // Add slight detuning for thickness
+        osc.detune.value = (Math.random() - 0.5) * ORGAN_SETTINGS.DETUNE_CENTS * 2;
+        
+        // Vibrato LFO
+        vibrato.type = 'sine';
+        vibrato.frequency.value = ORGAN_SETTINGS.VIBRATO_RATE;
+        vibratoGain.gain.value = ORGAN_SETTINGS.VIBRATO_DEPTH;
+        
+        // Connect vibrato to frequency modulation
+        vibrato.connect(vibratoGain);
+        vibratoGain.connect(osc.frequency);
+        
+        // Connect oscillator through envelope
+        osc.connect(env);
+        env.connect(organGain);
+        
+        // Organ envelope (fast attack, no decay, full sustain, quick release)
+        env.gain.value = 0;
+        env.gain.linearRampToValueAtTime(
+          amplitude * ORGAN_SETTINGS.BASE_VOLUME,
+          now + ORGAN_SETTINGS.ATTACK_TIME
+        );
+        
+        // Hold at full volume
+        env.gain.setValueAtTime(
+          amplitude * ORGAN_SETTINGS.BASE_VOLUME,
+          now + duration
+        );
+        
+        // Quick release
+        env.gain.exponentialRampToValueAtTime(
+          0.001,
+          now + duration + ORGAN_SETTINGS.RELEASE_TIME
+        );
+        
+        // Start oscillators
+        vibrato.start(now);
+        osc.start(now);
+        
+        // Stop oscillators
+        const stopTime = now + duration + ORGAN_SETTINGS.RELEASE_TIME;
+        vibrato.stop(stopTime);
+        osc.stop(stopTime);
+        
+        oscillators.push(osc);
+        this.trackOscillator(osc, stopTime);
+      }
+    }
+    
+    // Add subtle key click noise
+    const click = ctx.createBufferSource();
+    const clickBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.002, ctx.sampleRate);
+    const clickData = clickBuffer.getChannelData(0);
+    for (let i = 0; i < clickData.length; i++) {
+      clickData[i] = (Math.random() * 2 - 1) * 0.1;
+    }
+    click.buffer = clickBuffer;
+    
+    const clickEnv = ctx.createGain();
+    click.connect(clickEnv);
+    clickEnv.connect(organGain);
+    
+    clickEnv.gain.value = 0.05;
+    click.start(now);
+    
+    // Connect through filter to master
+    organGain.connect(filter);
+    filter.connect(this.masterGain!);
+    
+    // Set overall organ volume
+    organGain.gain.value = 0.7;
+    
+    // Return the fundamental oscillator for compatibility
+    return oscillators[0] || ctx.createOscillator();
   }
 }
 
