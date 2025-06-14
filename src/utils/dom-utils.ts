@@ -50,3 +50,48 @@ export function toggleClass(element: HTMLElement, className: string): boolean {
 export function hasClass(element: HTMLElement, className: string): boolean {
   return element.classList.contains(className);
 }
+
+// Visual feedback utilities
+export function addTemporaryClass(element: HTMLElement, className: string, duration: number): void {
+  addClass(element, className);
+  setTimeout(() => {
+    removeClass(element, className);
+  }, duration);
+}
+
+export function addRippleEffect(element: HTMLElement): void {
+  // Remove existing ripple class and re-add it to restart animation
+  removeClass(element, 'ripple');
+  // Force reflow
+  element.offsetHeight;
+  addClass(element, 'ripple');
+  
+  // Clean up after animation
+  setTimeout(() => {
+    removeClass(element, 'ripple');
+  }, 600);
+}
+
+export function triggerPlayingAnimation(element: HTMLElement, duration = 600): void {
+  addTemporaryClass(element, 'playing', duration);
+}
+
+export function animateNotePress(noteButton: HTMLElement): void {
+  triggerPlayingAnimation(noteButton, 600);
+  addRippleEffect(noteButton);
+}
+
+export function animateChordPlay(chordResult: HTMLElement, noteBadges: NodeListOf<HTMLElement>): void {
+  triggerPlayingAnimation(chordResult, 800);
+  
+  noteBadges.forEach((badge, index) => {
+    setTimeout(() => {
+      triggerPlayingAnimation(badge, 600);
+    }, index * 50); // Stagger the animations
+  });
+}
+
+export function animateButtonPress(button: HTMLElement): void {
+  triggerPlayingAnimation(button, 500);
+  addRippleEffect(button);
+}

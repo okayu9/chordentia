@@ -13,6 +13,10 @@ import {
   removeClass,
   toggleClass,
   hasClass,
+  animateNotePress,
+  animateChordPlay,
+  animateButtonPress,
+  triggerPlayingAnimation,
 } from './utils/dom-utils.js';
 
 interface AppState {
@@ -194,6 +198,20 @@ class ChordentiaApp {
     const note = button.dataset[HTML_ATTRIBUTES.CURRENT_NOTE] || button.dataset[HTML_ATTRIBUTES.NOTE] || '';
     const normalizedNote = MusicTheory.normalizeNote(note as Note);
 
+    // Add visual feedback for note press
+    animateNotePress(button);
+
+    // Play the individual note
+    try {
+      const midiNote = MusicTheory.getMidiNote(normalizedNote, DEFAULT_OCTAVE);
+      if (midiNote !== null) {
+        const frequency = MusicTheory.getFrequency(midiNote);
+        AudioPlayer.playNote(frequency);
+      }
+    } catch (error) {
+      console.error('Failed to play note:', normalizedNote);
+    }
+
     if (hasClass(button, CSS_CLASSES.SELECTED)) {
       removeClass(button, CSS_CLASSES.SELECTED);
       this.state.selectedNotes = this.state.selectedNotes.filter(
@@ -282,15 +300,34 @@ class ChordentiaApp {
     suggestionButtons.forEach((button) => {
       button.addEventListener('click', () => {
         const chordName = (button as HTMLElement).dataset.chord || '';
-        this.playChordByName(chordName);
+        this.playChordByName(chordName, button as HTMLElement);
       });
     });
   }
 
-  private playChordByName(chordName: string): void {
+  private playChordByName(chordName: string, sourceElement?: HTMLElement): void {
     try {
       const chord = MusicTheory.getChordFromString(chordName);
       AudioPlayer.playChord(chord.notes, DEFAULT_OCTAVE, DEFAULT_DURATION, chord.bassNote);
+      
+      if (sourceElement) {
+        // If called from a chord suggestion button, animate that button
+        animateButtonPress(sourceElement);
+        
+        // Also animate any visible note badges in the chord suggestion area
+        const suggestionNoteBadges = this.elements.chordSuggestion.querySelectorAll<HTMLElement>('.note-badge');
+        if (suggestionNoteBadges.length > 0) {
+          suggestionNoteBadges.forEach((badge, index) => {
+            setTimeout(() => {
+              triggerPlayingAnimation(badge, 600);
+            }, index * 50);
+          });
+        }
+      } else {
+        // If called from main chord result area, animate that area
+        const noteBadges = this.elements.chordResult.querySelectorAll<HTMLElement>('.note-badge');
+        animateChordPlay(this.elements.chordResult, noteBadges);
+      }
     } catch (error) {
       console.error('Failed to play chord:', chordName);
     }
@@ -313,6 +350,18 @@ class ChordentiaApp {
         DEFAULT_DURATION,
         selectedBassNote as Note | undefined
       );
+      
+      // Add visual feedback for play button and selected note buttons
+      animateButtonPress(this.elements.playNotesBtn);
+      
+      // Animate selected note buttons
+      this.elements.noteButtons.forEach((button) => {
+        if (hasClass(button, CSS_CLASSES.SELECTED)) {
+          setTimeout(() => {
+            animateNotePress(button);
+          }, Math.random() * 100); // Slight random delay for more natural effect
+        }
+      });
     }
   }
 
@@ -324,9 +373,16 @@ class ChordentiaApp {
         DEFAULT_DURATION,
         this.state.currentChord.bassNote
       );
+      
+      // Add visual feedback for play button and chord display
+      animateButtonPress(this.elements.playChordBtn);
+      const noteBadges = querySelectorAll<HTMLElement>('.note-badge');
+      animateChordPlay(this.elements.chordResult, noteBadges);
     } else {
       const chordString = this.elements.chordInput.value.trim();
       if (chordString) {
+        // Add visual feedback for play button
+        animateButtonPress(this.elements.playChordBtn);
         this.playChordByName(chordString);
       }
     }
