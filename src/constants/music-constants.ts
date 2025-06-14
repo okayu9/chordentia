@@ -56,40 +56,69 @@ export const ENHARMONIC_EQUIVALENTS: Readonly<Record<string, string>> = {
 } as const;
 
 export const REVERSE_ENHARMONIC: Readonly<Record<string, string>> = {
+  // Single flats
   Db: 'C#',
   Eb: 'D#',
   Gb: 'F#',
   Ab: 'G#',
   Bb: 'A#',
+  Cb: 'B',
+  Fb: 'E',
+  
+  // Double flats
+  Dbb: 'C',
   Ebb: 'D',
+  Fbb: 'D#', // F double-flat = Eb = D#
+  Gbb: 'F',
   Abb: 'G',
   Bbb: 'A',
+  Cbb: 'A#', // C double-flat = Bb = A#
+  
+  // Double sharps
+  'C##': 'D',
+  'D##': 'E',
+  'E##': 'F#',
+  'F##': 'G',
+  'G##': 'A',
+  'A##': 'B',
+  'B##': 'C#',
 } as const;
 
 // MIDI note mappings
 export const NOTE_TO_MIDI: Readonly<Record<string, number>> = {
   C: 60,
   'C#': 61,
+  'C##': 62, // C double-sharp = D
   Db: 61,
+  Dbb: 60, // D double-flat = C
   D: 62,
   'D#': 63,
+  'D##': 64, // D double-sharp = E
   Eb: 63,
-  Ebb: 62,
+  Ebb: 62, // E double-flat = D
   E: 64,
-  Fb: 64,
+  'E##': 66, // E double-sharp = F#
+  Fb: 64, // F-flat = E
+  Fbb: 63, // F double-flat = Eb
   F: 65,
   'F#': 66,
+  'F##': 67, // F double-sharp = G
   Gb: 66,
+  Gbb: 65, // G double-flat = F
   G: 67,
   'G#': 68,
+  'G##': 69, // G double-sharp = A
   Ab: 68,
-  Abb: 67,
+  Abb: 67, // A double-flat = G
   A: 69,
   'A#': 70,
+  'A##': 71, // A double-sharp = B
   Bb: 70,
-  Bbb: 69,
+  Bbb: 69, // B double-flat = A
   B: 71,
-  Cb: 71,
+  'B##': 61, // B double-sharp = C# (next octave, but same pitch class)
+  Cb: 71, // C-flat = B
+  Cbb: 70, // C double-flat = Bb
 } as const;
 
 // Chord qualities to skip in find possible chords

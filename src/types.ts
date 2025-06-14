@@ -12,26 +12,37 @@
 export type Note =
   | 'C'
   | 'C#'
+  | 'C##'
   | 'Db'
+  | 'Dbb'
   | 'D'
   | 'D#'
+  | 'D##'
   | 'Eb'
   | 'Ebb'
   | 'E'
+  | 'E##'
   | 'Fb'
+  | 'Fbb'
   | 'F'
   | 'F#'
+  | 'F##'
   | 'Gb'
+  | 'Gbb'
   | 'G'
   | 'G#'
+  | 'G##'
   | 'Ab'
   | 'Abb'
   | 'A'
   | 'A#'
+  | 'A##'
   | 'Bb'
   | 'Bbb'
   | 'B'
-  | 'Cb';
+  | 'B##'
+  | 'Cb'
+  | 'Cbb';
 
 /**
  * Available audio waveform types for synthesis

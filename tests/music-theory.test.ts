@@ -632,4 +632,189 @@ describe('MusicTheory', () => {
       expect(complexChords[3]!.quality).toBe('13');
     });
   });
+
+  describe('Enharmonic Note Handling Fixes', () => {
+    it('should handle problematic enharmonic notes correctly', () => {
+      // Test previously problematic notes
+      const problemNotes = ['Fb', 'Dbb', 'Cb'] as Note[];
+      
+      for (const note of problemNotes) {
+        // Should have valid MIDI mapping
+        expect(MusicTheory.getMidiNote(note, 4)).not.toBeNull();
+        
+        // Should normalize correctly
+        const normalized = MusicTheory.normalizeNote(note);
+        expect(normalized).toBeTruthy();
+        expect(normalized).not.toBe(note); // Should normalize to something else
+      }
+    });
+
+    it('should generate chord notes for Fb, Cb, and Dbb chords', () => {
+      // Test chord generation for previously failing notes
+      expect(() => MusicTheory.getChordFromString('Fb')).not.toThrow();
+      expect(() => MusicTheory.getChordFromString('Cb')).not.toThrow();
+      expect(() => MusicTheory.getChordFromString('Dbb')).not.toThrow();
+      
+      const fbChord = MusicTheory.getChordFromString('Fb');
+      const cbChord = MusicTheory.getChordFromString('Cb');
+      const dbbChord = MusicTheory.getChordFromString('Dbb');
+      
+      // Should have notes
+      expect(fbChord.notes.length).toBeGreaterThan(0);
+      expect(cbChord.notes.length).toBeGreaterThan(0);
+      expect(dbbChord.notes.length).toBeGreaterThan(0);
+      
+      // Should have correct root notes
+      expect(fbChord.root).toBe('Fb');
+      expect(cbChord.root).toBe('Cb');
+      expect(dbbChord.root).toBe('Dbb');
+    });
+
+    it('should handle Abb, Bbb, Ebb consistently', () => {
+      // These partially worked before, should work completely now
+      const workingNotes = ['Abb', 'Bbb', 'Ebb'] as Note[];
+      
+      for (const note of workingNotes) {
+        // Should generate chords without error
+        expect(() => MusicTheory.getChordFromString(note)).not.toThrow();
+        
+        const chord = MusicTheory.getChordFromString(note);
+        expect(chord.notes.length).toBeGreaterThan(0);
+        expect(chord.root).toBe(note);
+      }
+    });
+
+    it('should find chords from selected notes including enharmonic equivalents', () => {
+      // Test that chord finding works with enharmonic notes
+      const fbMajorNotes = MusicTheory.getChordFromString('Fb').notes;
+      const foundChords = MusicTheory.findPossibleChords(fbMajorNotes);
+      
+      // Should find some chords
+      expect(foundChords.exact.length + foundChords.partial.length).toBeGreaterThan(0);
+    });
+
+    it('should correctly normalize all enharmonic equivalents', () => {
+      const enharmonicTests = [
+        { input: 'Fb', expected: 'E' },
+        { input: 'Cb', expected: 'B' },
+        { input: 'Dbb', expected: 'C' },
+        { input: 'Ebb', expected: 'D' },
+        { input: 'Abb', expected: 'G' },
+        { input: 'Bbb', expected: 'A' },
+      ];
+
+      for (const test of enharmonicTests) {
+        expect(MusicTheory.normalizeNote(test.input as Note)).toBe(test.expected);
+      }
+    });
+
+    it('should handle enharmonic notes in MIDI conversion', () => {
+      // Test MIDI note conversion for enharmonic equivalents
+      expect(MusicTheory.getMidiNote('Fb', 4)).toBe(64); // Same as E4
+      expect(MusicTheory.getMidiNote('Cb', 4)).toBe(71); // Same as B4
+      expect(MusicTheory.getMidiNote('Dbb', 4)).toBe(60); // Same as C4
+      expect(MusicTheory.getMidiNote('E', 4)).toBe(64);
+      expect(MusicTheory.getMidiNote('B', 4)).toBe(71);
+      expect(MusicTheory.getMidiNote('C', 4)).toBe(60);
+    });
+  });
+
+  describe('Double Accidentals Support', () => {
+    it('should handle all double-flat notes correctly', () => {
+      const doubleFlatTests = [
+        { input: 'Cbb', midiExpected: 70, normalizedExpected: 'A#' }, // C double-flat = Bb
+        { input: 'Dbb', midiExpected: 60, normalizedExpected: 'C' },  // D double-flat = C
+        { input: 'Ebb', midiExpected: 62, normalizedExpected: 'D' },  // E double-flat = D
+        { input: 'Fbb', midiExpected: 63, normalizedExpected: 'D#' }, // F double-flat = Eb
+        { input: 'Gbb', midiExpected: 65, normalizedExpected: 'F' },  // G double-flat = F
+        { input: 'Abb', midiExpected: 67, normalizedExpected: 'G' },  // A double-flat = G
+        { input: 'Bbb', midiExpected: 69, normalizedExpected: 'A' },  // B double-flat = A
+      ];
+
+      for (const test of doubleFlatTests) {
+        // Test MIDI conversion
+        expect(MusicTheory.getMidiNote(test.input as Note, 4)).toBe(test.midiExpected);
+        
+        // Test normalization
+        expect(MusicTheory.normalizeNote(test.input as Note)).toBe(test.normalizedExpected);
+        
+        // Test chord generation
+        expect(() => MusicTheory.getChordFromString(test.input)).not.toThrow();
+        const chord = MusicTheory.getChordFromString(test.input);
+        expect(chord.notes.length).toBeGreaterThan(0);
+        expect(chord.root).toBe(test.input);
+      }
+    });
+
+    it('should handle all double-sharp notes correctly', () => {
+      const doubleSharpTests = [
+        { input: 'C##', midiExpected: 62, normalizedExpected: 'D' },  // C double-sharp = D
+        { input: 'D##', midiExpected: 64, normalizedExpected: 'E' },  // D double-sharp = E
+        { input: 'E##', midiExpected: 66, normalizedExpected: 'F#' }, // E double-sharp = F#
+        { input: 'F##', midiExpected: 67, normalizedExpected: 'G' },  // F double-sharp = G
+        { input: 'G##', midiExpected: 69, normalizedExpected: 'A' },  // G double-sharp = A
+        { input: 'A##', midiExpected: 71, normalizedExpected: 'B' },  // A double-sharp = B
+        { input: 'B##', midiExpected: 61, normalizedExpected: 'C#' }, // B double-sharp = C#
+      ];
+
+      for (const test of doubleSharpTests) {
+        // Test MIDI conversion
+        expect(MusicTheory.getMidiNote(test.input as Note, 4)).toBe(test.midiExpected);
+        
+        // Test normalization
+        expect(MusicTheory.normalizeNote(test.input as Note)).toBe(test.normalizedExpected);
+        
+        // Test chord generation
+        expect(() => MusicTheory.getChordFromString(test.input)).not.toThrow();
+        const chord = MusicTheory.getChordFromString(test.input);
+        expect(chord.notes.length).toBeGreaterThan(0);
+        expect(chord.root).toBe(test.input);
+      }
+    });
+
+    it('should generate correct chord notes for double accidentals', () => {
+      // Test some specific double accidental chords
+      const fbbMajor = MusicTheory.getChordFromString('Fbb'); // F double-flat major
+      const csharpsharpMajor = MusicTheory.getChordFromString('C##'); // C double-sharp major
+      
+      // Fbb major should have notes equivalent to Eb major
+      expect(fbbMajor.notes).toEqual(['D#', 'G', 'A#']); // Eb-G-Bb normalized
+      
+      // C## major should have notes equivalent to D major
+      expect(csharpsharpMajor.notes).toEqual(['D', 'F#', 'A']); // D-F#-A
+    });
+
+    it('should handle complex chords with double accidentals', () => {
+      // Test some complex chord combinations
+      const complexChords = [
+        'C##m7',   // C double-sharp minor 7
+        'Fbb7',    // F double-flat 7
+        'G##dim',  // G double-sharp diminished
+        'Abbmaj7', // A double-flat major 7
+      ];
+
+      for (const chordName of complexChords) {
+        expect(() => MusicTheory.getChordFromString(chordName)).not.toThrow();
+        const chord = MusicTheory.getChordFromString(chordName);
+        expect(chord.notes.length).toBeGreaterThan(2); // Should have at least 3 notes
+      }
+    });
+
+    it('should find chords using double accidental notes', () => {
+      // Test chord finding with double accidentals
+      const fbbMajorNotes = MusicTheory.getChordFromString('Fbb').notes;
+      const foundChords = MusicTheory.findPossibleChords(fbbMajorNotes);
+      
+      // Should find some chords (at least the equivalent Eb major variations)
+      expect(foundChords.exact.length + foundChords.partial.length).toBeGreaterThan(0);
+    });
+
+    it('should handle enharmonic equivalence between double accidentals and regular notes', () => {
+      // Test that double accidentals resolve to the same MIDI notes as their equivalents
+      expect(MusicTheory.getMidiNote('C##', 4)).toBe(MusicTheory.getMidiNote('D', 4));
+      expect(MusicTheory.getMidiNote('Fbb', 4)).toBe(MusicTheory.getMidiNote('Eb', 4));
+      expect(MusicTheory.getMidiNote('G##', 4)).toBe(MusicTheory.getMidiNote('A', 4));
+      expect(MusicTheory.getMidiNote('Cbb', 4)).toBe(MusicTheory.getMidiNote('Bb', 4));
+    });
+  });
 });

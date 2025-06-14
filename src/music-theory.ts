@@ -37,7 +37,15 @@ function normalizeChordQuality(quality: string): ChordQuality {
 }
 
 function extractRootNote(chordString: string): { root: string; remaining: string } {
-  // Handle triple flats first (Ebb, Abb, Bbb)
+  // Handle double sharps first (C##, D##, etc.)
+  if (chordString.length >= 3 && chordString.substring(1, 3) === '##') {
+    return {
+      root: chordString.substring(0, 3),
+      remaining: chordString.substring(3),
+    };
+  }
+  
+  // Handle double flats (Cbb, Dbb, etc.)
   if (chordString.length >= 3 && chordString.substring(1, 3) === 'bb') {
     return {
       root: chordString.substring(0, 3),
@@ -45,7 +53,7 @@ function extractRootNote(chordString: string): { root: string; remaining: string
     };
   }
   
-  // Handle sharps and flats
+  // Handle single sharps and flats
   if (chordString.length >= 2 && (chordString[1] === '#' || chordString[1] === 'b')) {
     return {
       root: chordString.substring(0, 2),
@@ -100,11 +108,17 @@ function parseChord(chordString: string): ParsedChord {
 }
 
 function getNoteIndex(note: string): number {
+  // First check if it's already in the sharp notes array
   const index = SHARP_NOTES.indexOf(note as Note);
   if (index !== -1) return index;
   
-  // Check enharmonic equivalents
+  // Check forward enharmonic equivalents (sharp -> flat)
   for (const [sharp, flat] of Object.entries(ENHARMONIC_EQUIVALENTS)) {
+    if (flat === note) return SHARP_NOTES.indexOf(sharp as Note);
+  }
+  
+  // Check reverse enharmonic equivalents (flat -> sharp)
+  for (const [flat, sharp] of Object.entries(REVERSE_ENHARMONIC)) {
     if (flat === note) return SHARP_NOTES.indexOf(sharp as Note);
   }
   
