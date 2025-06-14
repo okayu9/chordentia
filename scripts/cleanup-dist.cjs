@@ -12,8 +12,17 @@ function cleanupDist() {
     files.forEach(file => {
       if (file !== 'index.html') {
         const filePath = path.join(distPath, file);
-        fs.unlinkSync(filePath);
-        console.log(`✓ Removed ${file}`);
+        const stat = fs.statSync(filePath);
+        
+        if (stat.isDirectory()) {
+          // Remove directory recursively
+          fs.rmSync(filePath, { recursive: true, force: true });
+          console.log(`✓ Removed directory ${file}`);
+        } else {
+          // Remove file
+          fs.unlinkSync(filePath);
+          console.log(`✓ Removed ${file}`);
+        }
       }
     });
     
