@@ -527,4 +527,109 @@ describe('MusicTheory', () => {
       });
     });
   });
+
+  describe('Chord Voicing for Root Note Bass', () => {
+    it('should return different chord structures for enharmonic equivalent chords', () => {
+      // Test augmented chords that have the same notes but different roots
+      const caug = MusicTheory.getChordFromString('Caug');
+      const eaug = MusicTheory.getChordFromString('Eaug');
+      const gshaug = MusicTheory.getChordFromString('G#aug');
+
+      // All should have the same notes but different roots
+      expect(caug.notes.sort()).toEqual(['C', 'E', 'G#']);
+      expect(eaug.notes.sort()).toEqual(['C', 'E', 'G#']);
+      expect(gshaug.notes.sort()).toEqual(['C', 'E', 'G#']);
+
+      // But they should have different root notes
+      expect(caug.root).toBe('C');
+      expect(eaug.root).toBe('E');
+      expect(gshaug.root).toBe('G#');
+
+      // Bass notes should be undefined for these non-slash chords
+      expect(caug.bassNote).toBeUndefined();
+      expect(eaug.bassNote).toBeUndefined();
+      expect(gshaug.bassNote).toBeUndefined();
+    });
+
+    it('should handle diminished chords with different roots correctly', () => {
+      const cdim = MusicTheory.getChordFromString('Cdim');
+      const ebdim = MusicTheory.getChordFromString('Ebdim');
+      const fsharpdim = MusicTheory.getChordFromString('F#dim');
+
+      // They should have different root notes - this is the key test
+      expect(cdim.root).toBe('C');
+      expect(ebdim.root).toBe('Eb'); // Eb is not normalized in root
+      expect(fsharpdim.root).toBe('F#');
+
+      // Each should have 3 notes (triad)
+      expect(cdim.notes).toHaveLength(3);
+      expect(ebdim.notes).toHaveLength(3);
+      expect(fsharpdim.notes).toHaveLength(3);
+
+      // Root note should be included in the notes (in normalized form)
+      expect(cdim.notes).toContain('C');
+      expect(ebdim.notes).toContain('D#'); // Eb becomes D# in notes
+      expect(fsharpdim.notes).toContain('F#');
+    });
+
+    it('should correctly identify root notes for chord progression analysis', () => {
+      // Test common chord progression chords
+      const chords = ['Cmaj7', 'Am7', 'Dm7', 'G7'].map(name => 
+        MusicTheory.getChordFromString(name)
+      );
+
+      expect(chords[0]!.root).toBe('C');
+      expect(chords[1]!.root).toBe('A');
+      expect(chords[2]!.root).toBe('D');
+      expect(chords[3]!.root).toBe('G');
+
+      // Verify they have expected chord qualities
+      expect(chords[0]!.quality).toBe('maj7');
+      expect(chords[1]!.quality).toBe('m7');
+      expect(chords[2]!.quality).toBe('m7');
+      expect(chords[3]!.quality).toBe('7');
+    });
+
+    it('should distinguish between chord with same notes but different bass notes', () => {
+      // C major triad vs C/E (first inversion) vs C/G (second inversion)
+      const cmaj = MusicTheory.getChordFromString('C');
+      const cOverE = MusicTheory.getChordFromString('C/E');
+      const cOverG = MusicTheory.getChordFromString('C/G');
+
+      // All should have same basic notes
+      expect(cmaj.notes.sort()).toEqual(['C', 'E', 'G']);
+      expect(cOverE.notes.sort()).toEqual(['C', 'E', 'G']);
+      expect(cOverG.notes.sort()).toEqual(['C', 'E', 'G']);
+
+      // All should have same root
+      expect(cmaj.root).toBe('C');
+      expect(cOverE.root).toBe('C');
+      expect(cOverG.root).toBe('C');
+
+      // But different bass notes
+      expect(cmaj.bassNote).toBeUndefined();
+      expect(cOverE.bassNote).toBe('E');
+      expect(cOverG.bassNote).toBe('G');
+    });
+
+    it('should handle complex jazz chords with proper root identification', () => {
+      const complexChords = [
+        'Cmaj7',
+        'Am11',
+        'D7alt',
+        'G13'
+      ].map(name => MusicTheory.getChordFromString(name));
+
+      expect(complexChords[0]!.root).toBe('C');
+      expect(complexChords[1]!.root).toBe('A');
+      expect(complexChords[2]!.root).toBe('D');
+      expect(complexChords[3]!.root).toBe('G');
+
+      // Verify complex qualities are preserved
+      expect(complexChords[0]!.quality).toBe('maj7');
+      expect(complexChords[1]!.quality).toBe('m11');
+      expect(complexChords[2]!.quality).toBe('7alt');
+      expect(complexChords[3]!.quality).toBe('13');
+    });
+  });
 });

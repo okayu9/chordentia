@@ -308,7 +308,11 @@ class ChordentiaApp {
   private playChordByName(chordName: string, sourceElement?: HTMLElement): void {
     try {
       const chord = MusicTheory.getChordFromString(chordName);
-      AudioPlayer.playChord(chord.notes, DEFAULT_OCTAVE, DEFAULT_DURATION, chord.bassNote);
+      
+      // If called from chord suggestion, use the root note as bass note to ensure proper voicing
+      const bassNote = sourceElement ? chord.root : chord.bassNote;
+      
+      AudioPlayer.playChord(chord.notes, DEFAULT_OCTAVE, DEFAULT_DURATION, bassNote);
       
       if (sourceElement) {
         // If called from a chord suggestion button, animate that button
