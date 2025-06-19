@@ -59,6 +59,29 @@ describe('MusicTheory', () => {
       expect(result.quality).toBe('mM13');
       expect(result.bassNote).toBe('D');
     });
+
+    it('should parse augmented 7th chord as aug7', () => {
+      const result = MusicTheory.parseChord('Caug7');
+      expect(result.root).toBe('C');
+      expect(result.quality).toBe('aug7');
+    });
+
+    it('should normalize 7+5 and 7#5 to aug7', () => {
+      const result1 = MusicTheory.parseChord('C7+5');
+      expect(result1.root).toBe('C');
+      expect(result1.quality).toBe('aug7');
+
+      const result2 = MusicTheory.parseChord('C7#5');
+      expect(result2.root).toBe('C');
+      expect(result2.quality).toBe('aug7');
+    });
+
+    it('should parse augmented 7th with slash chord', () => {
+      const result = MusicTheory.parseChord('Faug7/B');
+      expect(result.root).toBe('F');
+      expect(result.quality).toBe('aug7');
+      expect(result.bassNote).toBe('B');
+    });
   });
 
   describe('getChordFromString', () => {
@@ -111,6 +134,21 @@ describe('MusicTheory', () => {
       expect(chord.notes).toEqual(['D', 'A', 'C', 'E', 'G#', 'B', 'F#']);
       expect(chord.bassNote).toBe('D');
       expect(chord.quality).toBe('mM13');
+    });
+
+    it('should generate chord notes for augmented 7th chord', () => {
+      const chord = MusicTheory.getChordFromString('Caug7');
+      expect(chord.root).toBe('C');
+      expect(chord.notes).toEqual(['C', 'E', 'G#', 'A#']);
+      expect(chord.quality).toBe('aug7');
+    });
+
+    it('should handle augmented 7th slash chord Faug7/B', () => {
+      const chord = MusicTheory.getChordFromString('Faug7/B');
+      expect(chord.root).toBe('F');
+      expect(chord.notes).toEqual(['B', 'F', 'A', 'C#', 'D#']);
+      expect(chord.bassNote).toBe('B');
+      expect(chord.quality).toBe('aug7');
     });
   });
 

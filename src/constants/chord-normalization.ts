@@ -118,6 +118,8 @@ export const CHORD_QUALITY_NORMALIZATION: Readonly<Record<string, ChordQuality>>
   'm7(9,11)': 'm7(9,11)',
 
   // Augmented extensions
+  '7+5': 'aug7',        // 7+5 を aug7 に正規化
+  '7#5': 'aug7',        // 7#5 を aug7 に正規化
   'aug7(b9)': 'aug7(b9)',
   'aug9(#11)': 'aug9(#11)',
   'aug7(#9)': 'aug7#9',

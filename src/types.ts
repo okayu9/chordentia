@@ -106,6 +106,7 @@ export type ChordQuality =
   | '+5' // Augmented (alternate notation)
   | 'maj7+5' // Major 7th sharp 5
   | '7+5' // 7th sharp 5
+  | 'aug7' // Augmented 7th
   
   // Omit chords
   | 'omit5' // Omit 5th (major)

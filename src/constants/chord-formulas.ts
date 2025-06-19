@@ -52,6 +52,7 @@ export const CHORD_FORMULAS: Readonly<Record<ChordQuality, readonly number[]>> =
   // Augmented variations
   'maj7+5': [0, 4, 8, 11], // Major 7th sharp 5
   '7+5': [0, 4, 8, 10], // 7th sharp 5
+  aug7: [0, 4, 8, 10], // Augmented 7th
 
   // Omit chords
   omit5: [0, 4], // Omit 5th (major)
