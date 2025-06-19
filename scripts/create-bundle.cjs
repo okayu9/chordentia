@@ -33,10 +33,9 @@ function createBundle() {
     // Read all modules including constants
     const moduleMap = {
       'constants/music-constants': readModuleContent(distPath, 'constants/music-constants.js'),
-      'constants/chord-formulas': readModuleContent(distPath, 'constants/chord-formulas.js'),
-      'constants/chord-normalization': readModuleContent(distPath, 'constants/chord-normalization.js'),
       'constants/audio-constants': readModuleContent(distPath, 'constants/audio-constants.js'),
       'constants/ui-constants': readModuleContent(distPath, 'constants/ui-constants.js'),
+      'chord-registry-complete': readModuleContent(distPath, 'chord-registry-complete.js'),
       'utils/dom-utils': readModuleContent(distPath, 'utils/dom-utils.js'),
       'utils/error-handling': readModuleContent(distPath, 'utils/error-handling.js'),
       'types': readModuleContent(distPath, 'types.js'),
@@ -61,10 +60,11 @@ function createBundle() {
     const bundledModules = [
       '// Constants modules',
       moduleMap['constants/music-constants'],
-      moduleMap['constants/chord-formulas'], 
-      moduleMap['constants/chord-normalization'],
       moduleMap['constants/audio-constants'],
       moduleMap['constants/ui-constants'],
+      '',
+      '// Chord registry',
+      moduleMap['chord-registry-complete'],
       '',
       '// Utility modules',
       moduleMap['utils/dom-utils'],
