@@ -1,3 +1,8 @@
+/**
+ * Music Theory v2 - Using the new chord registry system
+ * This is a refactored version that uses the unified chord registry
+ */
+
 import type {
   Note,
   ChordQuality,
@@ -24,8 +29,16 @@ import {
   EXACT_MATCH_BOOST,
 } from './constants/music-constants.js';
 
-import { CHORD_FORMULAS } from './constants/chord-formulas.js';
-import { CHORD_QUALITY_NORMALIZATION } from './constants/chord-normalization.js';
+import { 
+  CHORD_REGISTRY, 
+  buildNormalizationMap, 
+  getChordDefinition,
+  isValidChordQuality,
+  type ChordRegistryKey 
+} from './chord-registry-complete.js';
+
+// Build normalization map once
+const NORMALIZATION_MAP = buildNormalizationMap();
 
 // Helper functions
 function isValidNote(note: string): note is Note {
@@ -33,7 +46,7 @@ function isValidNote(note: string): note is Note {
 }
 
 function normalizeChordQuality(quality: string): ChordQuality {
-  return CHORD_QUALITY_NORMALIZATION[quality] || (quality as ChordQuality);
+  return (NORMALIZATION_MAP[quality] || quality) as ChordQuality;
 }
 
 function extractRootNote(chordString: string): { root: string; remaining: string } {
@@ -80,351 +93,417 @@ function parseSlashChord(chordString: string): { chord: string; bassNote?: strin
   }
   
   return {
-    chord: chordString.substring(0, slashIndex).trim(),
-    bassNote: chordString.substring(slashIndex + 1).trim(),
+    chord: chordString.substring(0, slashIndex),
+    bassNote: chordString.substring(slashIndex + 1),
   };
-}
-
-function formatNote(note: string): Note {
-  return (note.charAt(0).toUpperCase() + note.slice(1).toLowerCase()) as Note;
-}
-
-// Core functions
-function parseChord(chordString: string): ParsedChord {
-  chordString = chordString.trim();
-  
-  const { chord, bassNote: bassNoteString } = parseSlashChord(chordString);
-  const { root: rootString, remaining: qualityString } = extractRootNote(chord);
-  
-  const root = formatNote(rootString);
-  const quality = qualityString === '' ? DEFAULT_CHORD_QUALITY : normalizeChordQuality(qualityString);
-  const bassNote = bassNoteString ? formatNote(bassNoteString) : undefined;
-  
-  const result: ParsedChord = { root, quality };
-  if (bassNote) {
-    result.bassNote = bassNote;
-  }
-  return result;
-}
-
-function getNoteIndex(note: string): number {
-  // First check if it's already in the sharp notes array
-  const index = SHARP_NOTES.indexOf(note as Note);
-  if (index !== -1) return index;
-  
-  // Check forward enharmonic equivalents (sharp -> flat)
-  for (const [sharp, flat] of Object.entries(ENHARMONIC_EQUIVALENTS)) {
-    if (flat === note) return SHARP_NOTES.indexOf(sharp as Note);
-  }
-  
-  // Check reverse enharmonic equivalents (flat -> sharp)
-  for (const [flat, sharp] of Object.entries(REVERSE_ENHARMONIC)) {
-    if (flat === note) return SHARP_NOTES.indexOf(sharp as Note);
-  }
-  
-  return -1;
-}
-
-function getChordNotes(root: Note, intervals: readonly number[]): Note[] {
-  const rootIndex = getNoteIndex(root);
-  if (rootIndex === -1) return [];
-  
-  return intervals.map(interval => {
-    const noteIndex = (rootIndex + interval) % SEMITONES_IN_OCTAVE;
-    return SHARP_NOTES[noteIndex]!;
-  });
-}
-
-function getChordFromString(chordString: string): Chord {
-  const { root, quality, bassNote } = parseChord(chordString);
-  
-  if (!isValidNote(root)) {
-    throw new Error('Invalid root note');
-  }
-  
-  if (!CHORD_FORMULAS[quality]) {
-    throw new Error('Invalid chord quality: ' + quality);
-  }
-  
-  const intervals = CHORD_FORMULAS[quality];
-  const notes = getChordNotes(root, intervals);
-  
-  // Handle bass note
-  if (bassNote) {
-    if (!isValidNote(bassNote)) {
-      throw new Error('Invalid bass note');
-    }
-    
-    // Move bass note to the beginning
-    const bassIndex = notes.indexOf(bassNote);
-    if (bassIndex > -1) {
-      notes.splice(bassIndex, 1);
-    }
-    notes.unshift(bassNote);
-  }
-  
-  return {
-    root,
-    quality: quality || DEFAULT_CHORD_QUALITY,
-    notes,
-    intervals: [...intervals],
-    ...(bassNote && { bassNote }),
-  };
-}
-
-function calculateChordScore(
-  chordNotes: Note[],
-  selectedNotes: Note[],
-  quality: ChordQuality
-): { matchScore: number; exactMatch: boolean; simplicityScore: number } {
-  const selectedSet = new Set(selectedNotes);
-  const chordSet = new Set(chordNotes);
-  
-  // Check if all chord notes are in selected notes
-  const matchingNotes = chordNotes.filter(note => selectedSet.has(note)).length;
-  // Exact match: all chord notes must be in selected notes, with limited extra notes allowed
-  const extraNotes = selectedNotes.length - chordNotes.length;
-  const exactMatch = matchingNotes === chordNotes.length && extraNotes <= 1;
-  
-  // Calculate coverage score (how much of the chord is covered)
-  const coverageScore = matchingNotes / chordNotes.length;
-  
-  // Calculate precision score (how much of selected notes are used)
-  const usedSelectedNotes = selectedNotes.filter(note => chordSet.has(note)).length;
-  const precisionScore = selectedNotes.length > 0 ? usedSelectedNotes / selectedNotes.length : 0;
-  
-  // Penalize chords that have many extra notes not in selection
-  const unusedChordNotes = chordNotes.length - matchingNotes;
-  const unusedPenalty = unusedChordNotes * 0.2;
-  
-  // Penalize chords when many selected notes are unused
-  const unusedSelectedNotes = selectedNotes.length - usedSelectedNotes;
-  const wasteScore = unusedSelectedNotes * 0.15;
-  
-  // Combined match score: prioritize coverage, then precision, then penalize waste
-  const matchScore = coverageScore * 0.7 + precisionScore * 0.3 - unusedPenalty - wasteScore;
-  
-  // Simplicity score: prefer simpler chords, but also consider how well they fit
-  const baseSimplicityScore = chordNotes.length === 3 ? 1 : 1 - (chordNotes.length - 3) * DEFAULT_SIMPLICITY_PENALTY;
-  const simplicityScore = baseSimplicityScore * (1 + coverageScore * 0.3);
-  
-  return { 
-    matchScore: Math.max(0, matchScore), // Ensure non-negative
-    exactMatch, 
-    simplicityScore: Math.max(0, simplicityScore) 
-  };
-}
-
-function createChordSuggestion(
-  root: Note,
-  quality: ChordQuality,
-  chordNotes: Note[],
-  scores: { matchScore: number; exactMatch: boolean; simplicityScore: number },
-  bassNote?: Note
-): ChordSuggestion {
-  const displayQuality = quality === EMPTY_CHORD_QUALITY ? '' : quality;
-  const name = root + displayQuality + (bassNote && bassNote !== root ? '/' + bassNote : '');
-  
-  return {
-    name,
-    root,
-    quality,
-    notes: [...chordNotes],
-    ...(bassNote && { bassNote }),
-    ...scores,
-  };
-}
-
-function findPossibleChords(selectedNotes: Note[], bassNote?: Note): ChordSuggestionResult {
-  if (selectedNotes.length === 0) {
-    return { exact: [], partial: [] };
-  }
-  
-  const suggestions: ChordSuggestion[] = [];
-  const noteSet = new Set(selectedNotes.map(n => n.toUpperCase()));
-  
-  // Try each selected note as a potential root
-  for (const rootNote of selectedNotes) {
-    // Try each chord quality
-    for (const [quality, intervals] of Object.entries(CHORD_FORMULAS)) {
-      // Skip duplicate chord notations
-      if (SKIP_CHORD_QUALITIES.includes(quality as ChordQuality)) {
-        continue;
-      }
-      
-      const chordNotes = getChordNotes(rootNote, intervals);
-      const chordNoteSet = new Set(chordNotes);
-      
-      // Check for any overlap between chord notes and selected notes
-      const matchingNotesCount = chordNotes.filter(note => noteSet.has(note)).length;
-      const minMatchThreshold = Math.max(2, Math.ceil(chordNotes.length * 0.5)); // At least 50% or 2 notes
-      
-      if (matchingNotesCount >= minMatchThreshold) {
-        const scores = calculateChordScore(chordNotes, selectedNotes, quality as ChordQuality);
-        
-        // Handle bass note requirements and auto-detect slash chords
-        let finalNotes = [...chordNotes];
-        let isExactMatch = scores.exactMatch;
-        let finalBassNote: Note | undefined = bassNote;
-        
-        if (bassNote) {
-          // Explicit bass note specified
-          if (bassNote !== rootNote) {
-            // For slash chords, special exact match logic
-            if (selectedNotes.includes(bassNote)) {
-              // Check if selected notes = chord notes + bass note
-              const chordNotesSet = new Set(chordNotes);
-              const selectedNotesSet = new Set(selectedNotes);
-              const bassIsExtra = !chordNotesSet.has(bassNote);
-              
-              if (bassIsExtra) {
-                // Bass note is extra, check if other notes match exactly
-                const nonBassSelected = selectedNotes.filter(note => note !== bassNote);
-                const nonBassExactMatch = nonBassSelected.length === chordNotes.length && 
-                  chordNotes.every(note => selectedNotesSet.has(note));
-                isExactMatch = nonBassExactMatch;
-              } else {
-                // Bass note is part of chord, but still check for extra notes
-                const usedNotes = new Set([...chordNotes, bassNote]);
-                const extraNotes = selectedNotes.filter(note => !usedNotes.has(note));
-                isExactMatch = extraNotes.length === 0 && selectedNotes.length === chordNotes.length;
-              }
-              
-              if (isExactMatch) {
-                const bassIndex = finalNotes.indexOf(bassNote);
-                if (bassIndex > -1) {
-                  finalNotes.splice(bassIndex, 1);
-                }
-                finalNotes.unshift(bassNote);
-              }
-            } else {
-              // Mark as not exact match if bass note requirements not met
-              isExactMatch = false;
-            }
-          } else {
-            // Root position chord - still need to check for extra notes
-            const extraNotes = selectedNotes.filter(note => !new Set(chordNotes).has(note));
-            if (extraNotes.length > 0) {
-              // Even for root position, don't show basic chords when extra notes exist
-              isExactMatch = false;
-            }
-            // Otherwise keep original exact match status
-          }
-        } else {
-          // No explicit bass note specified - check for auto-detect slash chords
-          const chordNotesSet = new Set(chordNotes);
-          const extraNotes = selectedNotes.filter(note => !chordNotesSet.has(note));
-          
-          if (extraNotes.length === 1 && matchingNotesCount === chordNotes.length) {
-            // Exactly one extra note and all chord notes match - potential slash chord
-            const potentialBass = extraNotes[0]!; // Safe assertion since length === 1
-            finalBassNote = potentialBass;
-            isExactMatch = true;
-            finalNotes = [potentialBass, ...chordNotes];
-          } else {
-            // Not a clean slash chord - use original exact match logic
-            // But don't allow basic triads when there are extra notes
-            if (extraNotes.length > 0 && matchingNotesCount === chordNotes.length) {
-              isExactMatch = false; // Don't show basic triads when extra notes exist
-            }
-          }
-        }
-        
-        // Update the scores with the corrected exact match status
-        const finalScores = { ...scores, exactMatch: isExactMatch };
-        
-        const suggestion = createChordSuggestion(
-          rootNote,
-          quality as ChordQuality,
-          finalNotes,
-          finalScores,
-          finalBassNote
-        );
-        suggestions.push(suggestion);
-      }
-    }
-  }
-  
-  // Sort suggestions
-  suggestions.sort((a, b) => {
-    // Exact matches first
-    if (a.exactMatch !== b.exactMatch) return b.exactMatch ? 1 : -1;
-    
-    // Then by match score
-    if (Math.abs(a.matchScore - b.matchScore) > 0.01) {
-      return b.matchScore - a.matchScore;
-    }
-    
-    // Then by simplicity
-    if (Math.abs(a.simplicityScore - b.simplicityScore) > 0.01) {
-      return b.simplicityScore - a.simplicityScore;
-    }
-    
-    // Finally by name length
-    return a.name.length - b.name.length;
-  });
-  
-  // Apply exact match boost to scores
-  const boostedSuggestions = suggestions.map(s => ({
-    ...s,
-    matchScore: s.exactMatch ? s.matchScore + EXACT_MATCH_BOOST : s.matchScore,
-  }));
-  
-  // Separate exact and partial matches
-  const exact = boostedSuggestions.filter(s => s.exactMatch);
-  let partial = boostedSuggestions.filter(s => !s.exactMatch);
-  
-  // Filter partial matches to only show high-quality results
-  if (partial.length > 0) {
-    // Only show partial matches with match score above threshold
-    const minPartialScore = 0.4; // Minimum 40% match quality
-    partial = partial.filter(s => s.matchScore >= minPartialScore);
-    
-    // Limit partial matches to best results
-    const maxPartialResults = 8;
-    partial = partial.slice(0, maxPartialResults);
-  }
-  
-  return { exact, partial };
-}
-
-function getMidiNote(note: Note, octave = 4): number | null {
-  const midiValue = NOTE_TO_MIDI[note];
-  if (midiValue === undefined) return null;
-  
-  // C4 = 60, so adjust based on octave
-  return midiValue + (octave - 4) * SEMITONES_IN_OCTAVE;
-}
-
-function getFrequency(midiNote: number): number {
-  return A4_FREQUENCY * Math.pow(2, (midiNote - A4_MIDI_NOTE) / SEMITONES_IN_OCTAVE);
-}
-
-function convertToNotation(notesArray: Note[], useFlats = false): Note[] {
-  if (!useFlats) return notesArray;
-  
-  return notesArray.map(note => {
-    const flat = ENHARMONIC_EQUIVALENTS[note];
-    return flat ? (flat as Note) : note;
-  });
 }
 
 function normalizeNote(note: Note): Note {
-  const sharp = REVERSE_ENHARMONIC[note];
-  return sharp ? (sharp as Note) : note;
+  return (REVERSE_ENHARMONIC[note] || note) as Note;
 }
 
-// Export the MusicTheory object
-export const MusicTheory: MusicTheoryInterface = {
+function getIntervalFromRoot(root: Note, target: Note): number {
+  const rootMidi = NOTE_TO_MIDI[root];
+  const targetMidi = NOTE_TO_MIDI[target];
+  
+  if (rootMidi === undefined || targetMidi === undefined) {
+    throw new Error(`Invalid note: ${root} or ${target}`);
+  }
+  
+  // Use pitch class (MIDI % 12) for interval calculation
+  const rootPitchClass = rootMidi % SEMITONES_IN_OCTAVE;
+  const targetPitchClass = targetMidi % SEMITONES_IN_OCTAVE;
+  
+  let interval = targetPitchClass - rootPitchClass;
+  
+  // Normalize to 0-11 range
+  while (interval < 0) interval += SEMITONES_IN_OCTAVE;
+  while (interval >= SEMITONES_IN_OCTAVE) interval -= SEMITONES_IN_OCTAVE;
+  
+  return interval;
+}
+
+function getNoteFromInterval(root: Note, interval: number): Note {
+  const rootMidi = NOTE_TO_MIDI[root];
+  if (rootMidi === undefined) {
+    throw new Error(`Invalid root note: ${root}`);
+  }
+  
+  const targetMidi = rootMidi + interval;
+  const normalizedMidi = ((targetMidi % SEMITONES_IN_OCTAVE) + SEMITONES_IN_OCTAVE) % SEMITONES_IN_OCTAVE;
+  
+  // Find the note with this pitch class (MIDI % 12), preferring sharps
+  // First try sharp notes
+  for (const note of SHARP_NOTES) {
+    const noteMidi = NOTE_TO_MIDI[note];
+    if (noteMidi !== undefined && (noteMidi % SEMITONES_IN_OCTAVE) === normalizedMidi) {
+      return note;
+    }
+  }
+  
+  // If not found in sharp notes, try all notes
+  for (const [note, midi] of Object.entries(NOTE_TO_MIDI)) {
+    if ((midi % SEMITONES_IN_OCTAVE) === normalizedMidi) {
+      return note as Note;
+    }
+  }
+  
+  throw new Error(`Could not find note for MIDI value: ${normalizedMidi}`);
+}
+
+function areSameNotes(notes1: Note[], notes2: Note[]): boolean {
+  if (notes1.length !== notes2.length) return false;
+  
+  const normalized1 = notes1.map(normalizeNote).sort();
+  const normalized2 = notes2.map(normalizeNote).sort();
+  
+  return normalized1.every((note, index) => note === normalized2[index]);
+}
+
+function getSimplicityScore(quality: ChordQuality): number {
+  // Define simplicity scores (lower is simpler)
+  const simplicityMap: Partial<Record<ChordQuality, number>> = {
+    '': 0,      // Major
+    'maj': 0,   // Major
+    'm': 1,     // Minor
+    '7': 2,     // Dominant 7th
+    'maj7': 3,  // Major 7th
+    'm7': 3,    // Minor 7th
+    'sus4': 4,  // Suspended 4th
+    'sus2': 4,  // Suspended 2nd
+    'dim': 5,   // Diminished
+    'aug': 5,   // Augmented
+    '6': 5,     // 6th
+    'm6': 6,    // Minor 6th
+    '9': 7,     // 9th
+    'add9': 7,  // Add 9th
+    'm9': 8,    // Minor 9th
+    'maj9': 8,  // Major 9th
+  };
+  
+  return simplicityMap[quality] ?? DEFAULT_SIMPLICITY_PENALTY;
+}
+
+// Unified internal functions
+function parseChordInternal(chordString: string): ParsedChord {
+  // Handle empty or invalid input
+  if (!chordString || typeof chordString !== 'string') {
+    throw new Error('Chord string is required');
+  }
+  
+  // Convert to uppercase for consistency
+  chordString = chordString.trim();
+  
+  // Make the first letter uppercase (root note)
+  if (chordString.length > 0) {
+    chordString = chordString.charAt(0).toUpperCase() + chordString.slice(1);
+  }
+  
+  // Parse slash chord
+  const { chord, bassNote } = parseSlashChord(chordString);
+  
+  // Extract root note
+  const { root, remaining } = extractRootNote(chord);
+  
+  // Validate root note
+  if (!isValidNote(root)) {
+    throw new Error(`Invalid root note: ${root}`);
+  }
+  
+  // Normalize and validate chord quality
+  const quality = remaining || DEFAULT_CHORD_QUALITY;
+  const normalizedQuality = normalizeChordQuality(quality);
+  
+  // Validate bass note if present
+  if (bassNote && !isValidNote(bassNote)) {
+    throw new Error(`Invalid bass note: ${bassNote}`);
+  }
+  
+  const result: ParsedChord = {
+    root: root as Note,
+    quality: normalizedQuality,
+  };
+  
+  if (bassNote) {
+    result.bassNote = bassNote as Note;
+  }
+  
+  return result;
+}
+
+function getChordFromParsedInternal(parsed: ParsedChord): Chord {
+  const { root, quality, bassNote } = parsed;
+  
+  // Get chord definition using new registry
+  const definition = getChordDefinition(quality);
+  if (!definition) {
+    throw new Error(`Invalid chord quality: ${quality}`);
+  }
+  
+  const intervals = definition.intervals;
+  
+  // Generate notes from intervals
+  const notes = intervals.map(interval => getNoteFromInterval(root, interval));
+  
+  // Handle bass note for slash chords
+  let finalNotes = [...notes];
+  if (bassNote && !notes.some(note => normalizeNote(note) === normalizeNote(bassNote))) {
+    // Add bass note at the beginning if it's not already in the chord
+    finalNotes = [bassNote, ...notes];
+  } else if (bassNote) {
+    // Rearrange to put bass note first
+    finalNotes = [bassNote, ...notes.filter(note => normalizeNote(note) !== normalizeNote(bassNote))];
+  }
+  
+  const result: Chord = {
+    root,
+    quality,
+    notes: finalNotes,
+    intervals: [...intervals],
+  };
+  
+  if (bassNote) {
+    result.bassNote = bassNote;
+  }
+  
+  return result;
+}
+
+// Public API implementation
+export const MusicTheory = {
+  parseChord(chordString: string): ParsedChord {
+    return parseChordInternal(chordString);
+  },
+  
+  getChordFromString(chordString: string): Chord {
+    const parsed = parseChordInternal(chordString);
+    return getChordFromParsedInternal(parsed);
+  },
+  
+  findPossibleChords(selectedNotes: Note[], bassNote?: Note): ChordSuggestionResult {
+    if (selectedNotes.length === 0) {
+      return { exact: [], partial: [] };
+    }
+    
+    const exact: ChordSuggestion[] = [];
+    const partial: ChordSuggestion[] = [];
+    
+    // Deduplicate and normalize selected notes
+    const uniqueSelectedNotes = Array.from(new Set(selectedNotes));
+    const normalizedSelected = uniqueSelectedNotes.map(normalizeNote);
+    const normalizedBass = bassNote ? normalizeNote(bassNote) : null;
+    
+    // If bass note is specified, we need to consider slash chords
+    // This means looking for chords that might not include the bass note in their base intervals
+    const notesToAnalyze = bassNote ? 
+      uniqueSelectedNotes.filter(note => normalizeNote(note) !== normalizedBass) : 
+      uniqueSelectedNotes;
+    
+    // Try each note as a potential root
+    const rootCandidates = bassNote ? 
+      // When bass is specified, try both the bass note and other selected notes as roots
+      [bassNote, ...notesToAnalyze] :
+      uniqueSelectedNotes;
+    
+    for (const potentialRoot of rootCandidates) {
+      // Try each chord quality from the registry
+      for (const [quality, definition] of Object.entries(CHORD_REGISTRY)) {
+        if (SKIP_CHORD_QUALITIES.includes(quality as ChordQuality)) {
+          continue;
+        }
+        
+        // Generate chord notes
+        const chordNotes = definition.intervals.map(interval => 
+          getNoteFromInterval(potentialRoot, interval)
+        );
+        const normalizedChordNotes = chordNotes.map(normalizeNote);
+        
+        // For slash chords, we need to consider two cases:
+        // 1. Bass note is part of the chord (inversion) - should show as regular chord AND slash chord
+        // 2. Bass note is not part of the chord (true slash chord) - analyze remaining notes
+        if (bassNote) {
+          const bassIsInChord = normalizedBass !== null && normalizedChordNotes.includes(normalizedBass);
+          
+          if (bassIsInChord) {
+            // Case 1: Bass note is part of the chord (inversion)
+            // Check if all selected notes match the chord exactly
+            const isExactMatch = areSameNotes(uniqueSelectedNotes, chordNotes);
+            const isPartialMatch = normalizedSelected.every(note => 
+              normalizedChordNotes.includes(normalizeNote(note as Note))
+            );
+            
+            if (isExactMatch || isPartialMatch) {
+              // Add regular chord name if bass note is the root
+              if (normalizedBass !== null && normalizeNote(potentialRoot) === normalizedBass) {
+                const regularName = quality === EMPTY_CHORD_QUALITY ? potentialRoot : `${potentialRoot}${quality}`;
+                const matchingCount = uniqueSelectedNotes.filter(note => 
+                  normalizedChordNotes.includes(normalizeNote(note))
+                ).length;
+                
+                const regularSuggestion: ChordSuggestion = {
+                  name: regularName,
+                  root: potentialRoot,
+                  quality: quality as ChordQuality,
+                  notes: chordNotes,
+                  matchScore: matchingCount / chordNotes.length,
+                  exactMatch: isExactMatch,
+                  simplicityScore: getSimplicityScore(quality as ChordQuality),
+                };
+                
+                if (isExactMatch) {
+                  exact.push(regularSuggestion);
+                } else if (isPartialMatch) {
+                  partial.push(regularSuggestion);
+                }
+              }
+              
+              // Also add slash chord version if bass is different from root
+              if (normalizedBass !== null && normalizeNote(potentialRoot) !== normalizedBass) {
+                const slashName = quality === EMPTY_CHORD_QUALITY ? 
+                  `${potentialRoot}/${bassNote}` : 
+                  `${potentialRoot}${quality}/${bassNote}`;
+                
+                const matchingCount = uniqueSelectedNotes.filter(note => 
+                  normalizedChordNotes.includes(normalizeNote(note))
+                ).length;
+                
+                const slashSuggestion: ChordSuggestion = {
+                  name: slashName,
+                  root: potentialRoot,
+                  quality: quality as ChordQuality,
+                  notes: [bassNote, ...chordNotes.filter(note => normalizeNote(note) !== normalizedBass)],
+                  matchScore: matchingCount / chordNotes.length,
+                  exactMatch: isExactMatch,
+                  simplicityScore: getSimplicityScore(quality as ChordQuality) + 1, // Slightly less simple than regular chord
+                };
+                
+                if (isExactMatch) {
+                  exact.push(slashSuggestion);
+                } else if (isPartialMatch) {
+                  partial.push(slashSuggestion);
+                }
+              }
+            }
+          } else {
+            // Case 2: Bass note is not part of the chord (true slash chord)
+            const selectedNotesWithoutBass = uniqueSelectedNotes.filter(note => 
+              normalizedBass === null || normalizeNote(note) !== normalizedBass
+            );
+            
+            const chordContainsSelectedNotes = selectedNotesWithoutBass.every(note =>
+              normalizedChordNotes.includes(normalizeNote(note))
+            );
+            
+            if (chordContainsSelectedNotes && selectedNotesWithoutBass.length > 0) {
+              const isExactMatch = areSameNotes(selectedNotesWithoutBass, chordNotes);
+              const name = quality === EMPTY_CHORD_QUALITY ? 
+                `${potentialRoot}/${bassNote}` : 
+                `${potentialRoot}${quality}/${bassNote}`;
+              
+              const matchingCount = selectedNotesWithoutBass.filter(note => 
+                normalizedChordNotes.includes(normalizeNote(note))
+              ).length;
+              
+              const suggestion: ChordSuggestion = {
+                name,
+                root: potentialRoot,
+                quality: quality as ChordQuality,
+                notes: [bassNote, ...chordNotes],
+                matchScore: matchingCount / chordNotes.length,
+                exactMatch: isExactMatch,
+                simplicityScore: getSimplicityScore(quality as ChordQuality) + 2, // Less simple than inversions
+              };
+              
+              if (isExactMatch) {
+                exact.push(suggestion);
+              } else {
+                partial.push(suggestion);
+              }
+            }
+          }
+        } else {
+          // Original logic for when no bass note is specified
+          const isExactMatch = areSameNotes(uniqueSelectedNotes, chordNotes);
+          const isPartialMatch = normalizedSelected.every(note => 
+            normalizedChordNotes.includes(normalizeNote(note as Note))
+          );
+          
+          if (isExactMatch || isPartialMatch) {
+            const name = quality === EMPTY_CHORD_QUALITY ? potentialRoot : `${potentialRoot}${quality}`;
+            
+            const matchingCount = uniqueSelectedNotes.filter(note => 
+              normalizedChordNotes.includes(normalizeNote(note))
+            ).length;
+            
+            const suggestion: ChordSuggestion = {
+              name,
+              root: potentialRoot,
+              quality: quality as ChordQuality,
+              notes: chordNotes,
+              matchScore: matchingCount / chordNotes.length,
+              exactMatch: isExactMatch,
+              simplicityScore: getSimplicityScore(quality as ChordQuality),
+            };
+            
+            if (isExactMatch) {
+              exact.push(suggestion);
+            } else if (isPartialMatch) {
+              partial.push(suggestion);
+            }
+          }
+        }
+      }
+    }
+    
+    // Sort suggestions
+    const sortSuggestions = (a: ChordSuggestion, b: ChordSuggestion) => {
+      // First by exact match
+      if (a.exactMatch !== b.exactMatch) {
+        return a.exactMatch ? -1 : 1;
+      }
+      // Then by match score
+      if (a.matchScore !== b.matchScore) {
+        return b.matchScore - a.matchScore;
+      }
+      // Then by simplicity
+      return a.simplicityScore - b.simplicityScore;
+    };
+    
+    exact.sort(sortSuggestions);
+    partial.sort(sortSuggestions);
+    
+    return { exact, partial };
+  },
+  
+  getMidiNote(note: Note, octave: number = 4): number | null {
+    const midiValue = NOTE_TO_MIDI[note];
+    if (midiValue === undefined) return null;
+    
+    // C4 = 60, so adjust based on octave
+    return midiValue + (octave - 4) * SEMITONES_IN_OCTAVE;
+  },
+  
+  getFrequency(midiNote: number): number {
+    // A4 = 440Hz, MIDI note 69
+    // Each semitone up multiplies frequency by 2^(1/12)
+    return A4_FREQUENCY * Math.pow(2, (midiNote - A4_MIDI_NOTE) / SEMITONES_IN_OCTAVE);
+  },
+  
+  convertToNotation(notes: Note[], useFlats: boolean): Note[] {
+    if (!useFlats) return notes;
+    
+    return notes.map(note => {
+      // Convert sharps to flats using ENHARMONIC_EQUIVALENTS
+      const flatEquivalent = ENHARMONIC_EQUIVALENTS[note];
+      return flatEquivalent ? (flatEquivalent as Note) : note;
+    });
+  },
+  
+  normalizeNote,
+  
+  // Additional properties from MusicTheoryInterface
   notes: SHARP_NOTES,
   flatNotes: FLAT_NOTES,
   enharmonicEquivalents: ENHARMONIC_EQUIVALENTS,
   reverseEnharmonic: REVERSE_ENHARMONIC,
-  parseChord,
-  getChordFromString,
-  findPossibleChords,
-  getMidiNote,
-  getFrequency,
-  convertToNotation,
-  normalizeNote,
 };

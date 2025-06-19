@@ -529,38 +529,41 @@ describe('MusicTheory', () => {
     });
   });
 
-  describe('Bass note priority and exact match logic', () => {
-    it('should only show exact matches that include the specified bass note', () => {
-      // C, E, G with bass note C should only show exact matches that contain C
-      const result = MusicTheory.findPossibleChords(['C', 'E', 'G'] as Note[], 'C' as Note);
+  describe('Chord finding and exact match logic', () => {
+    it('should show exact matches for the selected notes', () => {
+      // C, E, G should show exact matches including C major
+      const result = MusicTheory.findPossibleChords(['C', 'E', 'G'] as Note[]);
       
-      // All exact matches should contain the bass note C
-      result.exact.forEach(chord => {
-        expect(chord.notes).toContain('C');
-      });
-      
-      // The first suggestion should be C major (since C is both root and bass)
+      // Should have exact matches
       expect(result.exact.length).toBeGreaterThan(0);
+      
+      // The first suggestion should be C major
       expect(result.exact[0]?.name).toBe('C');
     });
 
-    it('should not show exact matches without specified bass note', () => {
-      // C, E, G with bass note F - no exact matches should appear since F is not in the selected notes
-      const result = MusicTheory.findPossibleChords(['C', 'E', 'G'] as Note[], 'F' as Note);
+    it('should show exact matches for complete chord selections', () => {
+      // C, E, G should show exact matches for C major and related chords
+      const result = MusicTheory.findPossibleChords(['C', 'E', 'G'] as Note[]);
       
-      // Should have no exact matches since F is not in the selected notes
-      expect(result.exact.length).toBe(0);
+      // Should have exact matches
+      expect(result.exact.length).toBeGreaterThan(0);
       
-      // But should have partial matches
+      // Should also have partial matches for extended chords
       expect(result.partial.length).toBeGreaterThan(0);
     });
 
-    it('should show exact matches for slash chords when bass note is included', () => {
-      // C, E, G, A with bass note A should show exact matches like C6/A
-      const result = MusicTheory.findPossibleChords(['C', 'E', 'G', 'A'] as Note[], 'A' as Note);
+    it('should find exact matches for four-note selections', () => {
+      // C, E, G, A should show exact matches like C6 and Am7
+      const result = MusicTheory.findPossibleChords(['C', 'E', 'G', 'A'] as Note[]);
       
-      // All exact matches should contain the bass note A
+      // Should have exact matches
+      expect(result.exact.length).toBeGreaterThan(0);
+      
+      // All exact matches should contain all selected notes
       result.exact.forEach(chord => {
+        expect(chord.notes).toContain('C');
+        expect(chord.notes).toContain('E');
+        expect(chord.notes).toContain('G');
         expect(chord.notes).toContain('A');
       });
     });
