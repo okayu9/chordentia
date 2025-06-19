@@ -240,7 +240,7 @@ class ChordentiaApp {
     const selectedBassNote = this.elements.bassNoteSelect.value || undefined;
     const possibleChords = MusicTheory.findPossibleChords(
       this.state.selectedNotes,
-      selectedBassNote as Note | undefined
+      selectedBassNote as Note
     );
     this.displayChordSuggestions(possibleChords);
   }
