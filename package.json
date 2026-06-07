@@ -11,7 +11,6 @@
     "minify:css": "cleancss src/styles.css -o dist/styles.min.css -O2",
     "minify:html": "npm run create:prod-html",
     "create:prod-html": "node scripts/create-prod-html.cjs",
-    "create:bundle": "node scripts/create-bundle.cjs",
     "minify:bundle": "terser dist/bundle.js -o dist/bundle.min.js -c passes=2,drop_console=true,drop_debugger=true,pure_funcs=['console.log','console.warn'] -m toplevel=false,keep_fnames=true,reserved=['AudioContext','webkitAudioContext']",
     "cleanup": "node scripts/cleanup-dist.cjs",
     "dev": "tsc --watch",
@@ -27,10 +26,7 @@
     "test:e2e": "npm run build && playwright test",
     "test:e2e:ui": "npm run build && playwright test --ui",
     "test:e2e:debug": "npm run build && playwright test --debug",
-    "ci": "npm run lint && npm run format:check && npm run test && npm run build",
-    "extract-chords": "node scripts/extract-chords.cjs",
-    "analyze-coverage": "node scripts/analyze-coverage.cjs",
-    "simple-coverage": "node scripts/simple-coverage.cjs"
+    "ci": "npm run lint && npm run format:check && npm run test && npm run build"
   },
   "devDependencies": {
     "@playwright/test": "^1.53.1",
