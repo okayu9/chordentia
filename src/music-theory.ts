@@ -26,7 +26,6 @@ import {
   A4_FREQUENCY,
   A4_MIDI_NOTE,
   DEFAULT_SIMPLICITY_PENALTY,
-  EXACT_MATCH_BOOST,
 } from './constants/music-constants.js';
 
 import { 
@@ -77,20 +76,27 @@ function extractRootNote(chordString: string): { root: string; remaining: string
 }
 
 function parseSlashChord(chordString: string): { chord: string; bassNote?: string } {
-  // Special case for 6/9 chords (not slash chords)
-  if (chordString.includes('6/9') || chordString.includes('maj6/9')) {
+  const slashIndexes = [...chordString.matchAll(/\//g)].map((match) => match.index);
+  if (slashIndexes.length === 0) {
     return { chord: chordString };
   }
-  
-  const slashIndex = chordString.indexOf('/');
-  if (slashIndex === -1) {
-    return { chord: chordString };
+
+  for (const slashIndex of slashIndexes) {
+    if (slashIndex === undefined) {
+      continue;
+    }
+
+    const chord = chordString.substring(0, slashIndex);
+    const bassNote = chordString.substring(slashIndex + 1);
+    const { root, remaining } = extractRootNote(chord);
+    const quality = normalizeChordQuality(remaining || DEFAULT_CHORD_QUALITY);
+
+    if (isValidNote(root) && getChordDefinition(quality) && isValidNote(bassNote)) {
+      return { chord, bassNote };
+    }
   }
   
-  return {
-    chord: chordString.substring(0, slashIndex),
-    bassNote: chordString.substring(slashIndex + 1),
-  };
+  return { chord: chordString };
 }
 
 function normalizeNote(note: Note): Note {

@@ -143,4 +143,3 @@ export const EMPTY_CHORD_QUALITY: ChordQuality = '';
 // UI Constants
 export const MIN_NOTES_FOR_CHORD_SUGGESTION = 2;
 export const DEFAULT_SIMPLICITY_PENALTY = 0.01;
-export const EXACT_MATCH_BOOST = 1000;

@@ -1,4 +1,9 @@
 import { MusicTheory } from '../src/music-theory.js';
+import {
+  CHORD_NORMALIZATION_MAP,
+  CHORD_REGISTRY,
+  getChordDefinition,
+} from '../src/chord-registry-complete.js';
 import type { Note, ChordQuality } from '../src/types.js';
 
 describe('MusicTheory', () => {
@@ -26,6 +31,13 @@ describe('MusicTheory', () => {
       const result = MusicTheory.parseChord('C/G');
       expect(result.root).toBe('C');
       expect(result.quality).toBe('maj');
+      expect(result.bassNote).toBe('G');
+    });
+
+    it('should parse 6/9 chords with slash bass notes', () => {
+      const result = MusicTheory.parseChord('C6/9/G');
+      expect(result.root).toBe('C');
+      expect(result.quality).toBe('6/9');
       expect(result.bassNote).toBe('G');
     });
 
@@ -362,6 +374,23 @@ describe('MusicTheory', () => {
   });
 
   describe('Chord Parsing Normalization', () => {
+    describe('Registry coverage', () => {
+      it('should resolve every registered chord quality', () => {
+        for (const quality of Object.keys(CHORD_REGISTRY)) {
+          const definition = getChordDefinition(quality);
+          expect(definition).not.toBeNull();
+          expect(() => MusicTheory.getChordFromString(`C${quality}`)).not.toThrow();
+        }
+      });
+
+      it('should normalize every alias to a registered chord quality', () => {
+        for (const [alias, normalizedQuality] of Object.entries(CHORD_NORMALIZATION_MAP)) {
+          expect(CHORD_REGISTRY).toHaveProperty(normalizedQuality);
+          expect(getChordDefinition(alias)).toBe(CHORD_REGISTRY[normalizedQuality]);
+        }
+      });
+    });
+
     describe('Alternative notations', () => {
       it('should normalize △ to maj7', () => {
         const result = MusicTheory.parseChord('C△');
