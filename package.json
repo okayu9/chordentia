@@ -2,6 +2,7 @@
   "name": "chordentia",
   "version": "2.0.0",
   "description": "Interactive chord analysis tool",
+  "license": "Apache-2.0",
   "main": "dist/app.js",
   "scripts": {
     "build": "tsc && npm run bundle && npm run minify:css && npm run minify:html && npm run cleanup && npm run validate",

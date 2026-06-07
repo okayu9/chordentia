@@ -98,4 +98,6 @@ tests/
 
 ## ライセンス
 
-このリポジトリにはライセンスファイルがありません。利用条件を明確にする場合は `LICENSE` を追加してください。
+Apache License 2.0 です。詳細は `LICENSE` を参照してください。
+
+Copyright 2025 Yumeto Inaoka
