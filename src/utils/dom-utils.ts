@@ -74,7 +74,7 @@ export function addRippleEffect(element: HTMLElement): void {
   // Force reflow
   element.offsetHeight;
   addClass(element, 'ripple');
-  
+
   // Clean up after animation
   setTimeout(() => {
     removeClass(element, 'ripple');
@@ -90,9 +90,12 @@ export function animateNotePress(noteButton: HTMLElement): void {
   addRippleEffect(noteButton);
 }
 
-export function animateChordPlay(chordResult: HTMLElement, noteBadges: NodeListOf<HTMLElement>): void {
+export function animateChordPlay(
+  chordResult: HTMLElement,
+  noteBadges: NodeListOf<HTMLElement>
+): void {
   triggerPlayingAnimation(chordResult, 800);
-  
+
   noteBadges.forEach((badge, index) => {
     setTimeout(() => {
       triggerPlayingAnimation(badge, 600);

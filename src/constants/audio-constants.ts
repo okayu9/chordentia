@@ -31,15 +31,15 @@ export const ORGAN_SETTINGS = {
   RELEASE_TIME: 0.1, // Quick release
   // Drawbar-inspired harmonics (Hammond organ style)
   HARMONICS: [
-    1.0,    // 16' - Sub-fundamental
-    0.8,    // 8' - Fundamental
-    0.7,    // 5⅓' - Third harmonic
-    0.5,    // 4' - Octave
-    0.4,    // 2⅔' - Fifth
-    0.3,    // 2' - Super octave
-    0.2,    // 1⅗' - Major third
-    0.15,   // 1⅓' - Fifth
-    0.1,    // 1' - Triple octave
+    1.0, // 16' - Sub-fundamental
+    0.8, // 8' - Fundamental
+    0.7, // 5⅓' - Third harmonic
+    0.5, // 4' - Octave
+    0.4, // 2⅔' - Fifth
+    0.3, // 2' - Super octave
+    0.2, // 1⅗' - Major third
+    0.15, // 1⅓' - Fifth
+    0.1, // 1' - Triple octave
   ],
   // Leslie speaker simulation
   VIBRATO_RATE: 6, // Hz

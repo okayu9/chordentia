@@ -64,7 +64,7 @@ export const REVERSE_ENHARMONIC: Readonly<Record<string, string>> = {
   Bb: 'A#',
   Cb: 'B',
   Fb: 'E',
-  
+
   // Double flats
   Dbb: 'C',
   Ebb: 'D',
@@ -73,7 +73,7 @@ export const REVERSE_ENHARMONIC: Readonly<Record<string, string>> = {
   Abb: 'G',
   Bbb: 'A',
   Cbb: 'A#', // C double-flat = Bb = A#
-  
+
   // Double sharps
   'C##': 'D',
   'D##': 'E',
