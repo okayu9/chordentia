@@ -49,121 +49,12 @@ export type Note =
  */
 export type WaveType = 'square' | 'sawtooth' | 'triangle' | 'organ';
 
+import type { ChordAlias, ChordRegistryKey } from './chord-registry-complete.js';
+
 /**
- * All supported chord qualities and variations
+ * All supported chord qualities and aliases, derived from the chord registry.
  */
-export type ChordQuality =
-  // Basic triads
-  | '' // Major (default)
-  | 'maj' // Major (explicit)
-  | 'm' // Minor
-  | 'min' // Minor (alternate)
-  | 'dim' // Diminished
-  | 'aug' // Augmented
-  
-  // Suspended chords
-  | 'sus2' // Suspended 2nd
-  | 'sus4' // Suspended 4th
-  | 'sus' // Suspended (defaults to sus4)
-  
-  // Seventh chords
-  | '7' // Dominant 7th
-  | 'maj7' // Major 7th
-  | 'm7' // Minor 7th
-  | 'min7' // Minor 7th (alternate)
-  | 'dim7' // Diminished 7th
-  | 'm7b5' // Half-diminished 7th
-  | 'mM7' // Minor-major 7th
-  
-  // Sixth chords
-  | '6' // Major 6th
-  | 'm6' // Minor 6th
-  | '6/9' // 6th with 9th
-  | 'maj6/9' // Major 6th with 9th
-  
-  // Extended chords (9th, 11th, 13th)
-  | '9' // Dominant 9th
-  | 'maj9' // Major 9th
-  | 'm9' // Minor 9th
-  | 'mM9' // Minor-major 9th
-  | 'm11' // Minor 11th
-  | 'mM11' // Minor-major 11th
-  | '13' // Dominant 13th
-  | 'm13' // Minor 13th
-  | 'mM13' // Minor-major 13th
-  
-  // Add chords
-  | 'add9' // Add 9th
-  | 'add11' // Add 11th
-  | 'add#11' // Add sharp 11th
-  | 'add13' // Add 13th
-  | 'add#13' // Add sharp 13th
-  | 'add2' // Add 2nd
-  | 'add4' // Add 4th
-  | 'add6' // Add 6th
-  
-  // Augmented variations
-  | '+5' // Augmented (alternate notation)
-  | 'maj7+5' // Major 7th sharp 5
-  | '7+5' // 7th sharp 5
-  | 'aug7' // Augmented 7th
-  
-  // Omit chords
-  | 'omit5' // Omit 5th (major)
-  | 'm(omit5)' // Omit 5th (minor)
-  | '7omit5' // 7th omit 5th
-  | 'maj7omit5' // Major 7th omit 5th
-  | 'm7omit5' // Minor 7th omit 5th
-  | 'omit3' // Omit 3rd (power chord)
-  | '5' // Power chord
-  | 'maj7(omit3)' // Major 7th omit 3rd
-  | '7omit3' // 7th omit 3rd
-  | 'sus2omit5' // Sus2 omit 5th
-  | 'sus4omit5' // Sus4 omit 5th
-  | '7sus4omit5' // 7th sus4 omit 5th
-  | '9omit5' // 9th omit 5th
-  | 'm9omit5' // Minor 9th omit 5th
-  
-  // Altered dominant chords
-  | '7b9' // 7th flat 9
-  | '7#9' // 7th sharp 9
-  | '7b5' // 7th flat 5
-  | '7alt' // Altered dominant
-  | '9b5' // 9th flat 5
-  
-  // Suspended variations
-  | '7sus4' // 7th suspended 4th
-  | '9sus4' // 9th suspended 4th
-  
-  // Complex tensions
-  | '7(9)' // 7th with 9th
-  | '7(13)' // 7th with 13th
-  | '7(9,13)' // 7th with 9th and 13th
-  | '7(b9,b13)' // 7th with flat 9 and flat 13
-  | '7(b5,#9)' // 7th flat 5 sharp 9
-  | '7(#5,b9)' // 7th sharp 5 flat 9
-  | '7(#9,#11)' // 7th sharp 9 sharp 11
-  | '7(b9,#11)' // 7th flat 9 sharp 11
-  | '7(9,#11,13)' // 7th with 9, #11, 13
-  
-  // Extended chord variations
-  | 'm7(9)' // Minor 7th with 9th
-  | 'm7(11)' // Minor 7th with 11th
-  | 'm7(9,11)' // Minor 7th with 9th and 11th
-  | 'm7b5(11)' // Half-diminished with 11th
-  | 'maj7(9)' // Major 7th with 9th
-  | 'maj7(13)' // Major 7th with 13th
-  | 'maj7(9,13)' // Major 7th with 9th and 13th
-  
-  // Augmented extensions
-  | 'aug7(b9)' // Augmented 7th flat 9
-  | 'aug9(#11)' // Augmented 9th sharp 11
-  | 'aug7#9' // Augmented 7th sharp 9
-  
-  // Tension-only notations
-  | '(9)' // Tension 9th only
-  | '(11)' // Tension 11th only
-  | '(13)'; // Tension 13th only
+export type ChordQuality = ChordRegistryKey | ChordAlias;
 
 // ============================================================================
 // Core Interfaces

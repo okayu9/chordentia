@@ -1,4 +1,4 @@
-import type { Note, Chord, ChordSuggestionResult } from './types.js';
+import type { Note, Chord, ChordSuggestion, ChordSuggestionResult, WaveType } from './types.js';
 import { MusicTheory } from './music-theory.js';
 import { AudioPlayer } from './audio-player.js';
 import { MIN_NOTES_FOR_CHORD_SUGGESTION, DEFAULT_OCTAVE, DEFAULT_DURATION } from './constants/music-constants.js';
@@ -260,7 +260,7 @@ class ChordentiaApp {
     this.attachChordSuggestionListeners();
   }
 
-  private createChordSuggestionHTML(suggestions: any[], title: string, className: string): string {
+  private createChordSuggestionHTML(suggestions: ChordSuggestion[], title: string, className: string): string {
     if (suggestions.length === 0) return '';
 
     const items = suggestions
@@ -415,7 +415,7 @@ class ChordentiaApp {
 
   private handleTimbreChange(): void {
     const timbre = this.elements.timbreSelect.value;
-    AudioPlayer.setTimbre(timbre as any);
+    AudioPlayer.setTimbre(timbre as WaveType);
   }
 
   private updateBassNoteOptions(): void {

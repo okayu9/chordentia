@@ -3,8 +3,6 @@
  * Centralizes all chord-related data and logic
  */
 
-import type { ChordQuality } from './types.js';
-
 export type ChordCategory = 'basic' | 'seventh' | 'extended' | 'altered' | 'suspended' | 'augmented' | 'diminished' | 'add' | 'omit' | 'tension';
 
 export interface ChordDefinition {
@@ -531,7 +529,7 @@ export const CHORD_REGISTRY = {
 } as const satisfies Record<string, ChordDefinition>;
 
 // Additional complex normalization rules that don't fit the simple alias pattern
-export const COMPLEX_NORMALIZATION_RULES: Record<string, ChordQuality> = {
+export const COMPLEX_NORMALIZATION_RULES: Record<string, ChordRegistryKey> = {
   // Parentheses variations
   '(b9)': '7b9',
   '7(b9)': '7b9',
@@ -552,7 +550,7 @@ export const COMPLEX_NORMALIZATION_RULES: Record<string, ChordQuality> = {
   
   // Minor variations
   'min': 'm'
-} as const;
+} as const satisfies Record<string, ChordRegistryKey>;
 
 // Derive types from the registry
 export type ChordRegistryKey = keyof typeof CHORD_REGISTRY;
