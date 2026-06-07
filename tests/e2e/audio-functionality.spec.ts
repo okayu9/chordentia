@@ -2,32 +2,67 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Audio Functionality E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('index.html');
-    await expect(page.locator('#chord-input')).toBeVisible();
-    
-    // Grant audio permission (this may not work in all test environments)
-    await page.evaluate(() => {
+    await page.addInitScript(() => {
       // Mock AudioContext for testing if needed
       if (typeof window.AudioContext === 'undefined' && typeof window.webkitAudioContext === 'undefined') {
         (window as any).AudioContext = class MockAudioContext {
+          state = 'running';
+          currentTime = 0;
           createOscillator() {
             return {
               connect() {},
               start() {},
               stop() {},
-              frequency: { value: 440 }
+              addEventListener() {},
+              frequency: { value: 440 },
+              detune: { value: 0 },
+              type: 'sine'
             };
           }
           createGain() {
             return {
               connect() {},
-              gain: { value: 0.1 }
+              gain: {
+                value: 0.1,
+                linearRampToValueAtTime() {},
+                exponentialRampToValueAtTime() {},
+                setValueAtTime() {}
+              }
             };
+          }
+          createBiquadFilter() {
+            return {
+              connect() {},
+              type: 'lowpass',
+              frequency: { value: 0 },
+              Q: { value: 0 }
+            };
+          }
+          createBuffer() {
+            return {
+              getChannelData() {
+                return new Float32Array(1);
+              }
+            };
+          }
+          createBufferSource() {
+            return {
+              connect() {},
+              start() {},
+              buffer: null
+            };
+          }
+          resume() {
+            this.state = 'running';
+            return Promise.resolve();
           }
           get destination() { return {}; }
         };
       }
     });
+
+    await page.goto('index.html');
+    await expect(page.locator('#chord-input')).toBeVisible();
   });
 
   test('should have audio controls visible', async ({ page }) => {
@@ -40,7 +75,7 @@ test.describe('Audio Functionality E2E Tests', () => {
     const timbreSelect = page.locator('#timbre-select');
     
     // Should have multiple timbre options
-    await expect(timbreSelect.locator('option')).toHaveCount(4); // sine, triangle, sawtooth, square
+    await expect(timbreSelect.locator('option')).toHaveCount(4);
     
     // Change timbre
     await page.selectOption('#timbre-select', 'sawtooth');

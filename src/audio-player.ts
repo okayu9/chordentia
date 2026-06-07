@@ -27,6 +27,7 @@ class AudioEngine {
 
   playNote(frequency: number, duration = AUDIO_DEFAULTS.DEFAULT_DURATION, startTime = 0): OscillatorNode {
     const ctx = this.init();
+    this.ensureContextRunning(ctx);
     
     if (this.currentTimbre === 'organ') {
       return this.playOrganNote(ctx, frequency, duration, startTime);
@@ -135,6 +136,12 @@ class AudioEngine {
     oscillator.type = this.currentTimbre as OscillatorType;
     oscillator.frequency.value = frequency;
     return oscillator;
+  }
+
+  private ensureContextRunning(ctx: AudioContext): void {
+    if (ctx.state === 'suspended') {
+      void ctx.resume();
+    }
   }
 
   private createEnvelope(ctx: AudioContext, duration: number, startTime: number): GainNode {
