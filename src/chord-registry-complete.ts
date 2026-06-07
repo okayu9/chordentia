@@ -579,11 +579,11 @@ export function buildNormalizationMap(): Record<string, ChordRegistryKey> {
   return map;
 }
 
+export const CHORD_NORMALIZATION_MAP = buildNormalizationMap();
+
 // Get chord definition by quality (including aliases)
 export function getChordDefinition(quality: string): ChordDefinition | null {
-  // Check normalization first
-  const normalizationMap = buildNormalizationMap();
-  const normalizedQuality = normalizationMap[quality] || quality;
+  const normalizedQuality = CHORD_NORMALIZATION_MAP[quality] || quality;
   
   // Then lookup in registry
   if (normalizedQuality in CHORD_REGISTRY) {

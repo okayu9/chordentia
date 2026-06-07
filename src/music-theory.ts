@@ -31,14 +31,9 @@ import {
 
 import { 
   CHORD_REGISTRY, 
-  buildNormalizationMap, 
+  CHORD_NORMALIZATION_MAP,
   getChordDefinition,
-  isValidChordQuality,
-  type ChordRegistryKey 
 } from './chord-registry-complete.js';
-
-// Build normalization map once
-const NORMALIZATION_MAP = buildNormalizationMap();
 
 // Helper functions
 function isValidNote(note: string): note is Note {
@@ -46,7 +41,7 @@ function isValidNote(note: string): note is Note {
 }
 
 function normalizeChordQuality(quality: string): ChordQuality {
-  return (NORMALIZATION_MAP[quality] || quality) as ChordQuality;
+  return (CHORD_NORMALIZATION_MAP[quality] || quality) as ChordQuality;
 }
 
 function extractRootNote(chordString: string): { root: string; remaining: string } {
@@ -182,6 +177,17 @@ function getSimplicityScore(quality: ChordQuality): number {
   };
   
   return simplicityMap[quality] ?? DEFAULT_SIMPLICITY_PENALTY;
+}
+
+function dedupeSuggestions(suggestions: ChordSuggestion[]): ChordSuggestion[] {
+  const seenNames = new Set<string>();
+  return suggestions.filter((suggestion) => {
+    if (seenNames.has(suggestion.name)) {
+      return false;
+    }
+    seenNames.add(suggestion.name);
+    return true;
+  });
 }
 
 // Unified internal functions
@@ -471,8 +477,14 @@ export const MusicTheory = {
     
     exact.sort(sortSuggestions);
     partial.sort(sortSuggestions);
+
+    const dedupedExact = dedupeSuggestions(exact);
+    const exactNames = new Set(dedupedExact.map((suggestion) => suggestion.name));
+    const dedupedPartial = dedupeSuggestions(partial).filter(
+      (suggestion) => !exactNames.has(suggestion.name)
+    );
     
-    return { exact, partial };
+    return { exact: dedupedExact, partial: dedupedPartial };
   },
   
   getMidiNote(note: Note, octave: number = 4): number | null {
