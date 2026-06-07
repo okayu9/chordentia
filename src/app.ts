@@ -17,6 +17,7 @@ import {
   animateChordPlay,
   animateButtonPress,
   triggerPlayingAnimation,
+  escapeHTML,
 } from './utils/dom-utils.js';
 
 interface AppState {
@@ -154,15 +155,15 @@ class ChordentiaApp {
     const noteBadges = this.createNoteBadges(displayNotes, displayBass);
 
     const html = `
-      <h3 style="color: ${COLORS.PRIMARY}; margin-bottom: 1rem;">${chordName}</h3>
+      <h3 style="color: ${COLORS.PRIMARY}; margin-bottom: 1rem;">${escapeHTML(chordName)}</h3>
       <div class="${CSS_CLASSES.CHORD_NOTES}">
         ${noteBadges}
       </div>
       <div class="${CSS_CLASSES.CHORD_INFO}">
-        <p>${MESSAGES.ROOT_LABEL}${displayRoot}</p>
-        <p>${MESSAGES.CHORD_TYPE_LABEL}${quality}</p>
-        ${displayBass ? `<p>${MESSAGES.BASS_NOTE_LABEL}${displayBass}</p>` : ''}
-        <p>${MESSAGES.NOTES_LABEL}${displayNotes.join(' - ')}</p>
+        <p>${MESSAGES.ROOT_LABEL}${escapeHTML(displayRoot)}</p>
+        <p>${MESSAGES.CHORD_TYPE_LABEL}${escapeHTML(quality)}</p>
+        ${displayBass ? `<p>${MESSAGES.BASS_NOTE_LABEL}${escapeHTML(displayBass)}</p>` : ''}
+        <p>${MESSAGES.NOTES_LABEL}${escapeHTML(displayNotes.join(' - '))}</p>
       </div>
     `;
 
@@ -189,7 +190,7 @@ class ChordentiaApp {
         const isBass = bassNote && index === 0 && note === bassNote;
         const badgeClass = `${CSS_CLASSES.NOTE_BADGE}${isBass ? ` ${CSS_CLASSES.BASS_NOTE}` : ''}`;
         const label = isBass ? `${note}${MESSAGES.BASS_LABEL}` : note;
-        return `<span class="${badgeClass}">${label}</span>`;
+        return `<span class="${badgeClass}">${escapeHTML(label)}</span>`;
       })
       .join('');
   }
@@ -271,9 +272,9 @@ class ChordentiaApp {
         const notesString = displayNotes.join(' - ');
         
         return `
-          <button class="chord-suggestion-btn" data-chord="${chord.name}">
-            <div class="chord-suggestion-name">${displayName}</div>
-            <div class="chord-suggestion-notes">${notesString}</div>
+          <button class="chord-suggestion-btn" data-chord="${escapeHTML(chord.name)}">
+            <div class="chord-suggestion-name">${escapeHTML(displayName)}</div>
+            <div class="chord-suggestion-notes">${escapeHTML(notesString)}</div>
           </button>
         `;
       })
@@ -288,11 +289,14 @@ class ChordentiaApp {
   }
 
   private convertChordNameToFlat(chordName: string): string {
-    let result = chordName;
-    for (const [sharp, flat] of Object.entries(MusicTheory.enharmonicEquivalents)) {
-      result = result.replace(new RegExp(sharp, 'g'), flat);
+    try {
+      const chord = MusicTheory.getChordFromString(chordName);
+      const displayRoot = this.convertNoteToDisplay(chord.root);
+      const displayBass = chord.bassNote ? this.convertNoteToDisplay(chord.bassNote) : null;
+      return this.formatChordName(displayRoot, chord.quality, displayBass);
+    } catch (error) {
+      return chordName;
     }
-    return result;
   }
 
   private attachChordSuggestionListeners(): void {

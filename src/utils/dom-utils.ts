@@ -35,6 +35,15 @@ export function setHTML(element: HTMLElement, html: string): void {
   element.innerHTML = html;
 }
 
+export function escapeHTML(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function addClass(element: HTMLElement, className: string): void {
   element.classList.add(className);
 }
